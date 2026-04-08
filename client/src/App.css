@@ -1,0 +1,574 @@
+/* ── Reset & Base ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Georgia', serif;
+  background: #1a1a2e;
+  color: #e8e0d0;
+  min-height: 100vh;
+}
+
+button { cursor: pointer; font-family: inherit; }
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── App ── */
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.connecting {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  background: #c0392b;
+  text-align: center;
+  padding: 6px;
+  font-size: 0.85rem;
+}
+
+/* ── Lobby ── */
+.lobby {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  gap: 24px;
+}
+
+.lobby h1 {
+  font-size: 3rem;
+  color: #f0c040;
+  text-shadow: 0 0 20px rgba(240,192,64,0.4);
+}
+
+.subtitle { color: #888; font-style: italic; }
+
+.lobby-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: 280px;
+}
+
+.join-form { display: flex; gap: 8px; width: 100%; }
+.join-form input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #444;
+  background: #16213e;
+  color: #e8e0d0;
+  border-radius: 6px;
+  font-size: 1.1rem;
+  letter-spacing: 4px;
+  text-align: center;
+}
+
+.divider { color: #666; font-size: 0.9rem; }
+
+.waiting { text-align: center; }
+.game-code {
+  font-size: 2rem;
+  letter-spacing: 8px;
+  color: #f0c040;
+  display: block;
+  margin: 8px 0;
+}
+.waiting-msg { color: #aaa; animation: pulse 2s ease-in-out infinite; }
+.hint { color: #666; font-size: 0.85rem; margin-top: 8px; }
+
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+/* ── Buttons ── */
+.btn-primary {
+  background: #f0c040;
+  color: #1a1a2e;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: bold;
+  width: 100%;
+  transition: background 0.2s;
+}
+.btn-primary:hover:not(:disabled) { background: #ffd060; }
+
+.btn-secondary {
+  background: transparent;
+  color: #aaa;
+  border: 1px solid #444;
+  padding: 10px 18px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  transition: border-color 0.2s, color 0.2s;
+}
+.btn-secondary:hover:not(:disabled) { border-color: #888; color: #e8e0d0; }
+
+.btn-ability {
+  background: #2a2a5e;
+  color: #aaccff;
+  border: 1px solid #4466aa;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  margin: 4px;
+  transition: background 0.2s;
+}
+.btn-ability:hover:not(:disabled) { background: #3a3a7e; }
+
+.btn-end-turn {
+  background: #2a6e2a;
+  color: #90ee90;
+  border: 1px solid #3a9e3a;
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: bold;
+  width: 100%;
+  margin-top: 12px;
+  transition: background 0.2s;
+}
+.btn-end-turn:hover:not(:disabled) { background: #3a8e3a; }
+
+/* ── Game Layout ── */
+.game-layout {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.game-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  overflow-y: auto;
+}
+
+.sidebar {
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: #111120;
+  border-left: 1px solid #333;
+}
+
+/* ── Player Board ── */
+.player-board {
+  background: #16213e;
+  border-radius: 8px;
+  padding: 12px;
+  border: 1px solid #333;
+}
+
+.my-board { border-color: #4466aa; }
+.opponent-board { border-color: #664444; }
+
+.board-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.board-label { font-weight: bold; font-size: 1rem; }
+.gold-counter { color: #f0c040; }
+.hand-count { color: #aaa; font-size: 0.85rem; }
+
+.city-label, .hand-label {
+  font-size: 0.8rem;
+  color: #888;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.district-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 40px;
+}
+
+.empty-city, .empty-hand {
+  color: #555;
+  font-style: italic;
+  font-size: 0.85rem;
+  padding: 8px;
+}
+
+/* ── District Cards ── */
+.district-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 80px;
+  padding: 6px;
+  border-radius: 6px;
+  border: 2px solid transparent;
+  font-size: 0.7rem;
+  cursor: default;
+  text-align: center;
+}
+
+.district-card.highlight {
+  border-color: #fff;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(255,255,255,0.3);
+}
+.district-card.highlight:hover { transform: translateY(-2px); }
+
+button.district-card {
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+button.district-card:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+
+.district-cost {
+  font-size: 1rem;
+  font-weight: bold;
+}
+.district-name { font-size: 0.65rem; line-height: 1.2; }
+.district-color { font-size: 0.6rem; opacity: 0.7; }
+
+/* ── Center Panel / Draft ── */
+.center-panel {
+  flex: 1;
+  background: #16213e;
+  border-radius: 8px;
+  padding: 16px;
+  border: 1px solid #2a4a7a;
+  overflow-y: auto;
+}
+
+/* ── Draft ── */
+.draft-phase h2 { color: #f0c040; margin-bottom: 12px; }
+.draft-status { margin-bottom: 16px; }
+.your-turn { color: #90ee90; font-weight: bold; }
+.waiting-turn { color: #aaa; }
+
+.role-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.role-card {
+  display: flex;
+  flex-direction: column;
+  width: 120px;
+  padding: 10px;
+  border-radius: 8px;
+  background: #1e2a4a;
+  border: 2px solid #334;
+  font-size: 0.8rem;
+}
+
+.role-card.selectable {
+  cursor: pointer;
+  border-color: #4466aa;
+  transition: background 0.2s, transform 0.1s;
+}
+.role-card.selectable:hover:not(:disabled) {
+  background: #2a3a6a;
+  transform: translateY(-2px);
+}
+
+.role-card.selected { border-color: #f0c040; background: #2a2a1a; }
+.role-card.discarded { opacity: 0.5; border-color: #cc4444; }
+
+.role-num {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #f0c040;
+}
+.role-name { font-weight: bold; margin: 4px 0; }
+.role-desc { color: #aaa; font-size: 0.7rem; line-height: 1.3; }
+
+/* ── Action Panel ── */
+.action-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.action-panel.waiting { color: #aaa; text-align: center; padding: 20px; }
+
+.turn-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.turn-header h3 { color: #e8e0d0; }
+.builds-left { color: #aaa; font-size: 0.85rem; }
+
+.income-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.income-section strong { color: #aaa; font-size: 0.85rem; }
+
+.ability-section {
+  background: #1e2a4a;
+  border: 1px solid #4466aa;
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ability-section strong { color: #aaccff; font-size: 0.85rem; }
+.role-targets { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.build-hint {
+  color: #f0c040;
+  font-size: 0.85rem;
+  font-style: italic;
+  padding: 8px;
+  background: rgba(240,192,64,0.05);
+  border-radius: 4px;
+  border-left: 3px solid #f0c040;
+}
+
+.drawn-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.district-card-btn {
+  background: #1e2a4a;
+  border: 1px solid #4466aa;
+  border-radius: 6px;
+  padding: 12px;
+  color: #e8e0d0;
+  text-align: left;
+  transition: background 0.2s;
+}
+.district-card-btn:hover { background: #2a3a6a; }
+
+.hand-select { display: flex; flex-direction: column; gap: 6px; }
+.card-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+.card-check:hover { background: #2a3a6a; }
+
+/* ── Game Over ── */
+.game-over {
+  text-align: center;
+  padding: 40px;
+}
+.game-over h2 { font-size: 2rem; color: #f0c040; margin-bottom: 16px; }
+.scores { margin-top: 20px; font-size: 1.1rem; line-height: 2; }
+
+/* ── Sidebar / Game Info ── */
+.game-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: #888;
+  padding: 6px 0;
+  border-bottom: 1px solid #333;
+}
+
+.error {
+  background: rgba(200,50,50,0.2);
+  border: 1px solid #c03030;
+  color: #ff9090;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+}
+
+/* ── Game Log ── */
+.game-log {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.game-log h4 { font-size: 0.8rem; color: #666; margin-bottom: 6px; text-transform: uppercase; }
+.log-entries {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.78rem;
+}
+
+.log-entry { padding: 3px 6px; border-radius: 3px; color: #aaa; }
+.log-entry.round { color: #f0c040; font-weight: bold; text-align: center; margin: 6px 0; }
+.log-entry.my-turn { color: #90ee90; }
+.log-entry.their-turn { color: #cc9090; }
+.log-entry.build { color: #aaccff; }
+.log-entry.gain { color: #90ee90; }
+.log-entry.spend { color: #cc9090; }
+.log-entry.info { color: #888; font-style: italic; }
+.log-entry.event { color: #e8c060; }
+
+.muted { color: #666; font-size: 0.85rem; }
+
+/* ── iPad / Tablet — Portrait (768-1024px) ── */
+@media (max-width: 1024px) {
+  /* Stack game layout vertically, move sidebar to bottom */
+  .game-layout {
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+    overflow-y: auto;
+  }
+
+  .game-main {
+    overflow-y: visible;
+    padding: 10px;
+    gap: 10px;
+  }
+
+  .sidebar {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid #333;
+    max-height: 200px;
+    flex-shrink: 0;
+  }
+
+  .game-log { max-height: 150px; }
+
+  /* Bigger touch targets for buttons */
+  .btn-primary, .btn-secondary, .btn-end-turn {
+    padding: 14px 24px;
+    font-size: 1.05rem;
+    min-height: 48px;
+  }
+
+  .btn-ability {
+    padding: 12px 16px;
+    font-size: 0.9rem;
+    min-height: 44px;
+  }
+
+  /* Larger district cards */
+  .district-card {
+    width: 90px;
+    padding: 8px;
+    font-size: 0.75rem;
+  }
+  .district-cost { font-size: 1.1rem; }
+  .district-name { font-size: 0.7rem; }
+
+  /* Larger role cards in draft */
+  .role-card {
+    width: 140px;
+    padding: 12px;
+    font-size: 0.85rem;
+  }
+  .role-num { font-size: 1.3rem; }
+  .role-desc { font-size: 0.75rem; }
+
+  /* Card choice buttons */
+  .district-card-btn {
+    padding: 14px;
+    font-size: 1rem;
+    min-height: 48px;
+  }
+
+  /* Checkbox targets */
+  .card-check {
+    padding: 10px;
+    font-size: 0.95rem;
+  }
+  .card-check input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+  }
+
+  /* Lobby */
+  .lobby-actions { width: 340px; }
+  .join-form input { padding: 14px; font-size: 1.2rem; }
+}
+
+/* ── iPad Landscape ── */
+@media (min-width: 1025px) and (max-width: 1366px) {
+  .sidebar { width: 280px; }
+
+  .district-card {
+    width: 88px;
+    padding: 7px;
+  }
+
+  .role-card { width: 130px; }
+
+  .btn-primary, .btn-secondary, .btn-end-turn {
+    min-height: 44px;
+  }
+}
+
+/* ── iPad Portrait — narrower layout adjustments ── */
+@media (max-width: 820px) {
+  .district-grid {
+    gap: 5px;
+    justify-content: center;
+  }
+
+  .role-list {
+    justify-content: center;
+  }
+
+  .center-panel {
+    padding: 12px;
+  }
+
+  .board-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .turn-header {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .income-section {
+    gap: 10px;
+  }
+}
+
+/* ── Prevent text selection on touch (game elements only) ── */
+@media (pointer: coarse) {
+  .district-card,
+  .role-card,
+  .btn-primary,
+  .btn-secondary,
+  .btn-ability,
+  .btn-end-turn {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    user-select: none;
+  }
+
+  /* Active states for touch feedback */
+  .btn-primary:active:not(:disabled) { background: #d0a030; }
+  .btn-secondary:active:not(:disabled) { border-color: #aaa; }
+  .btn-ability:active:not(:disabled) { background: #4a4a8e; }
+  .btn-end-turn:active:not(:disabled) { background: #4aae4a; }
+  .role-card.selectable:active:not(:disabled) { background: #3a4a7a; }
+  .district-card.highlight:active { transform: scale(0.97); }
+}

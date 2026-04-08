@@ -1,0 +1,142 @@
+import { useState, useEffect, useRef } from 'react';
+import { PHASES, EVENTS } from '../../../shared/constants.js';
+import { RoleDraft } from './RoleDraft.jsx';
+import { PlayerBoard } from './PlayerBoard.jsx';
+import { ActionPanel } from './ActionPanel.jsx';
+import { GameLog } from './GameLog.jsx';
+
+export function Game({ gameState, emit, error }) {
+  const [logs, setLogs] = useState([]);
+  const [warlordMode, setWarlordMode] = useState(false);
+  const prevStateRef = useRef(null);
+
+  // Build game log from server events + state changes
+  useEffect(() => {
+    if (!gameState) return;
+    const prev = prevStateRef.current;
+
+    const newLogs = [];
+
+    // Detect phase changes
+    if (!prev || prev.phase !== gameState.phase) {
+      if (gameState.phase === PHASES.DRAFT) {
+        newLogs.push({ message: `── Round ${gameState.round} ──`, type: 'round' });
+      }
+      if (gameState.phase === PHASES.TURNS) {
+        newLogs.push({ message: 'Roles revealed! Turns begin.', type: 'info' });
+      }
+    }
+
+    // Detect turn change
+    if (gameState.turn && (!prev || prev.turn?.roleId !== gameState.turn.roleId || prev.turn?.playerId !== gameState.turn.playerId)) {
+      const isMe = gameState.turn.playerId === gameState.myId;
+      newLogs.push({
+        message: `${isMe ? 'You are' : 'Opponent is'} acting as ${gameState.turn.roleName}`,
+        type: isMe ? 'my-turn' : 'their-turn',
+      });
+    }
+
+    // Append server-side events (assassinations, thefts, ability use, builds, etc.)
+    if (gameState.newEvents && gameState.newEvents.length > 0) {
+      for (const msg of gameState.newEvents) {
+        newLogs.push({ message: msg, type: 'event' });
+      }
+    }
+
+    if (newLogs.length > 0) {
+      setLogs(l => [...l, ...newLogs]);
+    }
+
+    prevStateRef.current = gameState;
+  }, [gameState]);
+
+  if (!gameState) return null;
+
+  const { phase, me, opponent, turn } = gameState;
+
+  // Warlord targets are indexed by district id for the opponent
+  const warlordTargets = warlordMode && turn?.abilityTargets
+    ? turn.abilityTargets
+    : null;
+
+  const handleWarlordTarget = (districtId) => {
+    const target = warlordTargets?.find(t => t.districtId === districtId);
+    if (!target) return;
+    emit(EVENTS.USE_ABILITY, {
+      targetPlayerId: gameState.opponentId,
+      targetDistrictId: districtId,
+    });
+    setWarlordMode(false);
+  };
+
+  const canBuild = (
+    phase === PHASES.TURNS &&
+    turn?.isMyTurn &&
+    turn?.hasTakenIncome &&
+    !turn?.drawnCards &&
+    turn?.buildsRemaining > 0
+  );
+
+  const handleBuildDistrict = (cardId) => {
+    emit(EVENTS.BUILD_DISTRICT, { cardId });
+  };
+
+  return (
+    <div className="game-layout">
+      <div className="game-main">
+        {/* Opponent */}
+        <PlayerBoard
+          player={opponent}
+          isMe={false}
+          label="Opponent"
+          onWarlordTarget={warlordMode ? handleWarlordTarget : null}
+          warlordTargets={warlordMode ? warlordTargets : null}
+        />
+
+        {/* Center panel */}
+        <div className="center-panel">
+          {phase === PHASES.DRAFT && (
+            <RoleDraft gameState={gameState} emit={emit} />
+          )}
+          {phase === PHASES.TURNS && (
+            <ActionPanel
+              gameState={gameState}
+              emit={emit}
+              setWarlordMode={setWarlordMode}
+              onWarlordTarget={handleWarlordTarget}
+            />
+          )}
+          {phase === PHASES.GAME_OVER && (
+            <div className="game-over">
+              <h2>Game Over!</h2>
+              <p>{gameState.winner === gameState.myId ? '🏆 You win!' : '💀 Opponent wins!'}</p>
+              <div className="scores">
+                <div>Your score: <strong>{gameState.scores?.[gameState.myId]}</strong></div>
+                <div>Opponent score: <strong>{gameState.scores?.[gameState.opponentId]}</strong></div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* You */}
+        <PlayerBoard
+          player={me}
+          isMe={true}
+          label="You"
+          onBuildDistrict={handleBuildDistrict}
+          canBuild={canBuild}
+        />
+      </div>
+
+      {/* Sidebar */}
+      <div className="sidebar">
+        <div className="game-info">
+          <span>Round {gameState.round}</span>
+          <span>Deck: {gameState.deckCount}</span>
+        </div>
+        {error && <div className="error">{error}</div>}
+        <GameLog logs={logs} />
+      </div>
+    </div>
+  );
+}
