@@ -16,6 +16,7 @@ export function ActionPanel({ gameState, emit, onWarlordTarget, setWarlordMode }
   const { turn, me } = gameState;
   const [magicianMode, setMagicianMode] = useState(null);
   const [selectedCards, setSelectedCards] = useState([]);
+  const [labMode, setLabMode] = useState(false);
 
   if (!turn) return null;
 
@@ -184,6 +185,41 @@ export function ActionPanel({ gameState, emit, onWarlordTarget, setWarlordMode }
           )}
           {turn.abilityType === 'magician_choice' && <MagicianAbility />}
           {turn.abilityType === 'district' && <WarlordAbility />}
+        </div>
+      )}
+
+      {/* Building abilities: Laboratory & Smithy */}
+      {(turn.canUseLaboratory || turn.canUseSmithy) && (
+        <div className="ability-section">
+          <strong>Building Abilities:</strong>
+          {turn.canUseSmithy && (
+            <button className="btn-ability" onClick={() => emit(EVENTS.USE_SMITHY)}>
+              Smithy — Pay 2 gold, draw 3 cards
+            </button>
+          )}
+          {turn.canUseLaboratory && !labMode && (
+            <button className="btn-ability" onClick={() => setLabMode(true)}>
+              Laboratory — Discard a card for 2 gold
+            </button>
+          )}
+          {turn.canUseLaboratory && labMode && (
+            <div>
+              <p>Choose a card to discard for 2 gold:</p>
+              <div className="drawn-cards">
+                {me.hand.map(card => (
+                  <button
+                    key={card.id}
+                    className="district-card-btn"
+                    onClick={() => { emit(EVENTS.USE_LABORATORY, { cardId: card.id }); setLabMode(false); }}
+                  >
+                    <strong>{card.name}</strong>
+                    <span> — {card.cost} gold ({card.color})</span>
+                  </button>
+                ))}
+              </div>
+              <button className="btn-secondary" onClick={() => setLabMode(false)}>Cancel</button>
+            </div>
+          )}
         </div>
       )}
 

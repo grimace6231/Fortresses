@@ -147,6 +147,17 @@ export const roleAbilities = {
         const cost = district.cost - 1;
         game.players[playerId].gold -= cost;
         target.city.splice(districtIndex, 1);
+
+        // Graveyard: if the targeted player has Graveyard and 1+ gold,
+        // they automatically pay 1 gold to recover the destroyed district
+        const hasGraveyard = target.city.some(d => d.name === 'Graveyard');
+        if (hasGraveyard && target.gold >= 1) {
+          target.gold -= 1;
+          target.hand.push(district);
+          game._log(`Graveyard: paid 1 gold to recover ${district.name} to hand.`);
+          return { type: 'warlord', destroyed: true, recovered: true, districtName: district.name, cost };
+        }
+
         game.deck.push(district);
         return { type: 'warlord', destroyed: true, districtName: district.name, cost };
       }

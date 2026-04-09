@@ -143,6 +143,34 @@ export function registerHandlers(io, socket, lobby) {
     broadcastState(io, lobby, lobby.getCode(socket.id));
   });
 
+  // Building ability: Laboratory
+  socket.on(EVENTS.USE_LABORATORY, ({ cardId }) => {
+    const game = lobby.getGame(socket.id);
+    if (!game) return;
+
+    const result = game.useLaboratory(pid(), cardId);
+    if (result.error) {
+      socket.emit(EVENTS.GAME_ERROR, { message: result.error });
+      return;
+    }
+
+    broadcastState(io, lobby, lobby.getCode(socket.id));
+  });
+
+  // Building ability: Smithy
+  socket.on(EVENTS.USE_SMITHY, () => {
+    const game = lobby.getGame(socket.id);
+    if (!game) return;
+
+    const result = game.useSmithy(pid());
+    if (result.error) {
+      socket.emit(EVENTS.GAME_ERROR, { message: result.error });
+      return;
+    }
+
+    broadcastState(io, lobby, lobby.getCode(socket.id));
+  });
+
   // Turn: end turn
   socket.on(EVENTS.END_TURN, () => {
     const game = lobby.getGame(socket.id);

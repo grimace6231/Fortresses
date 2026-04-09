@@ -100,6 +100,8 @@ export const EVENTS = {
   BUILD_DISTRICT: 'build-district',
   USE_ABILITY: 'use-ability',
   END_TURN: 'end-turn',
+  USE_LABORATORY: 'use-laboratory',
+  USE_SMITHY: 'use-smithy',
 
   // Game over
   GAME_OVER: 'game-over',

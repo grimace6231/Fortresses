@@ -295,7 +295,20 @@ export class GameEngine {
     if (!this._validateTurn(playerId)) return { error: 'Not your turn' };
     if (this.currentTurn.hasTakenIncome) return { error: 'Already took income' };
 
-    const drawn = this.deck.splice(0, DRAW_CARD_COUNT);
+    // Observatory: draw 3 instead of 2
+    const hasObservatory = this.players[playerId].city.some(d => d.name === 'Observatory');
+    const drawCount = hasObservatory ? 3 : DRAW_CARD_COUNT;
+    const drawn = this.deck.splice(0, drawCount);
+
+    // Library: keep all cards, skip the choose step
+    const hasLibrary = this.players[playerId].city.some(d => d.name === 'Library');
+    if (hasLibrary) {
+      this.players[playerId].hand.push(...drawn);
+      this.currentTurn.hasTakenIncome = true;
+      this._log(`Library lets the ${this.currentTurn.roleName} keep all ${drawn.length} drawn cards.`);
+      return { success: true, cards: drawn, keptAll: true };
+    }
+
     this.currentTurn.drawnCards = drawn;
     this.currentTurn.hasTakenIncome = true;
     return { success: true, cards: drawn };
@@ -315,6 +328,44 @@ export class GameEngine {
     this.currentTurn.drawnCards = null;
 
     return { success: true, card: chosen };
+  }
+
+  // Laboratory: discard a card from hand to gain 2 gold (once per turn)
+  useLaboratory(playerId, cardId) {
+    if (!this._validateTurn(playerId)) return { error: 'Not your turn' };
+    if (this.currentTurn.usedLaboratory) return { error: 'Already used Laboratory this turn' };
+
+    const player = this.players[playerId];
+    if (!player.city.some(d => d.name === 'Laboratory')) return { error: 'No Laboratory built' };
+
+    const cardIndex = player.hand.findIndex(c => c.id === cardId);
+    if (cardIndex === -1) return { error: 'Card not in hand' };
+
+    const card = player.hand.splice(cardIndex, 1)[0];
+    this.deck.push(card);
+    player.gold += 2;
+    this.currentTurn.usedLaboratory = true;
+    this._log(`Laboratory: discarded ${card.name} for 2 gold.`);
+
+    return { success: true };
+  }
+
+  // Smithy: pay 2 gold to draw 3 cards (once per turn)
+  useSmithy(playerId) {
+    if (!this._validateTurn(playerId)) return { error: 'Not your turn' };
+    if (this.currentTurn.usedSmithy) return { error: 'Already used Smithy this turn' };
+
+    const player = this.players[playerId];
+    if (!player.city.some(d => d.name === 'Smithy')) return { error: 'No Smithy built' };
+    if (player.gold < 2) return { error: 'Not enough gold (need 2)' };
+
+    player.gold -= 2;
+    const drawn = this.deck.splice(0, 3);
+    player.hand.push(...drawn);
+    this.currentTurn.usedSmithy = true;
+    this._log(`Smithy: paid 2 gold to draw ${drawn.length} cards.`);
+
+    return { success: true };
   }
 
   buildDistrict(playerId, cardId) {
@@ -515,6 +566,15 @@ export class GameEngine {
         buildsRemaining: this.currentTurn.buildsRemaining,
         drawnCards: this.currentTurn.playerId === playerId ? this.currentTurn.drawnCards : null,
       };
+
+      // Building abilities available this turn
+      if (state.turn.isMyTurn) {
+        const city = player.city;
+        state.turn.canUseLaboratory = city.some(d => d.name === 'Laboratory')
+          && !this.currentTurn.usedLaboratory && player.hand.length > 0;
+        state.turn.canUseSmithy = city.some(d => d.name === 'Smithy')
+          && !this.currentTurn.usedSmithy && player.gold >= 2;
+      }
 
       // Provide valid ability targets if it's this player's turn
       if (state.turn.isMyTurn && !this.currentTurn.hasUsedAbility) {
