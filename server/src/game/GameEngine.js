@@ -375,6 +375,10 @@ export class GameEngine {
     if (this.currentTurn.buildsRemaining <= 0) return { error: 'No builds remaining' };
 
     const player = this.players[playerId];
+
+    // Can't build past 8 districts
+    if (player.city.length >= DISTRICTS_TO_WIN) return { error: 'City is complete' };
+
     const cardIndex = player.hand.findIndex(c => c.id === cardId);
     if (cardIndex === -1) return { error: 'Card not in hand' };
 
@@ -398,7 +402,7 @@ export class GameEngine {
     if (player.city.length >= DISTRICTS_TO_WIN && !this.firstToComplete) {
       this.firstToComplete = playerId;
       this.finalRound = true;
-      this._log(`${card.name} completes their city! Final round!`);
+      this._log(`A city has been completed with ${card.name}! Final round!`);
     }
 
     return { success: true, district: card };
@@ -490,18 +494,17 @@ export class GameEngine {
       else if (player.city.length >= DISTRICTS_TO_WIN) score += 2;
 
       // All 5 colors: +3
-      // Haunted Quarter counts as any color for this bonus
+      // Haunted Quarter counts as any ONE missing color for this bonus
       const colors = new Set(player.city.map(d => d.color));
       const hasHauntedQuarter = player.city.some(d => d.name === 'Haunted Quarter');
-      if (hasHauntedQuarter) {
-        // Add whichever colors are missing (Haunted Quarter fills one gap)
-        const needed = ['noble', 'religious', 'trade', 'military', 'unique'];
-        const missing = needed.filter(c => !colors.has(c));
-        if (missing.length <= 1) {
-          // Haunted Quarter fills the one missing color
-          score += 3;
-        }
-      } else if (colors.size >= 5) {
+      const allColors = ['noble', 'religious', 'trade', 'military', 'unique'];
+      const missingCount = allColors.filter(c => !colors.has(c)).length;
+
+      if (colors.size >= 5) {
+        // Already have all 5 colors naturally
+        score += 3;
+      } else if (hasHauntedQuarter && missingCount === 1) {
+        // Haunted Quarter fills the one missing color
         score += 3;
       }
 
