@@ -5,12 +5,14 @@ export function createDeck() {
   let id = 0;
   for (const card of DISTRICT_CARDS) {
     for (let i = 0; i < card.count; i++) {
-      deck.push({
+      const entry = {
         id: id++,
         name: card.name,
         cost: card.cost,
         color: card.color,
-      });
+      };
+      if (card.desc) entry.desc = card.desc;
+      deck.push(entry);
     }
   }
   return shuffle(deck);

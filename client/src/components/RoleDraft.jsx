@@ -33,27 +33,12 @@ export function RoleDraft({ gameState, emit }) {
         }
       </div>
 
-      {/* Face-up discards */}
-      {draft.faceUp && draft.faceUp.length > 0 && (
-        <div className="discarded-roles">
-          <h3>Removed (visible)</h3>
-          <div className="role-list">
-            {draft.faceUp.map(role => (
-              <div key={role.id} className="role-card discarded">
-                <span className="role-num">{role.id}</span>
-                <span className="role-name">{role.name}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Available roles (only shown on your pick) */}
       {isMyTurn && draft.available && (
         <div className="available-roles">
           <h3>Choose a Role</h3>
           <div className="role-list">
-            {draft.available.map(role => (
+            {[...draft.available].sort((a, b) => a.id - b.id).map(role => (
               <button
                 key={role.id}
                 className="role-card selectable"
@@ -74,7 +59,7 @@ export function RoleDraft({ gameState, emit }) {
         <div className="my-roles">
           <h3>Your Roles This Round</h3>
           <div className="role-list">
-            {me.roles.map(role => (
+            {[...me.roles].sort((a, b) => a.id - b.id).map(role => (
               <div key={role.id} className="role-card selected">
                 <span className="role-num">{role.id}</span>
                 <span className="role-name">{role.name}</span>
