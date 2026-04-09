@@ -2,6 +2,15 @@ import { useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 import { EVENTS } from '../../../shared/constants.js';
 
+function getPlayerId() {
+  let id = localStorage.getItem('fortresses-player-id');
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem('fortresses-player-id', id);
+  }
+  return id;
+}
+
 export function useSocket() {
   const socketRef = useRef(null);
   const [connected, setConnected] = useState(false);
@@ -11,7 +20,8 @@ export function useSocket() {
 
   useEffect(() => {
     const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
-    const socket = io(serverUrl);
+    const playerId = getPlayerId();
+    const socket = io(serverUrl, { auth: { playerId } });
     socketRef.current = socket;
 
     socket.on('connect', () => setConnected(true));
@@ -22,6 +32,11 @@ export function useSocket() {
     });
 
     socket.on(EVENTS.GAME_JOINED, ({ code }) => {
+      setGameCode(code);
+    });
+
+    // Reconnected to an existing game
+    socket.on(EVENTS.GAME_RECONNECTED, ({ code }) => {
       setGameCode(code);
     });
 

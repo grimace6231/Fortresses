@@ -86,6 +86,7 @@ export const EVENTS = {
   GAME_JOINED: 'game-joined',
   GAME_START: 'game-start',
   GAME_ERROR: 'game-error',
+  GAME_RECONNECTED: 'game-reconnected',
 
   // Draft
   DRAFT_STATE: 'draft-state',

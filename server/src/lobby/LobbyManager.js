@@ -7,34 +7,58 @@ function generateCode() {
 export class LobbyManager {
   constructor() {
     this.games = {}; // { gameCode: GameEngine }
-    this.playerGame = {}; // { socketId: gameCode }
+    this.playerGame = {}; // { playerId: gameCode }
+    this.socketToPlayer = {}; // { socketId: playerId }
+    this.playerToSocket = {}; // { playerId: socketId }
+  }
+
+  // Map a socket to a persistent player ID
+  registerSocket(socketId, playerId) {
+    // If this player already had a socket, clean up old mapping
+    const oldSocket = this.playerToSocket[playerId];
+    if (oldSocket) {
+      delete this.socketToPlayer[oldSocket];
+    }
+    this.socketToPlayer[socketId] = playerId;
+    this.playerToSocket[playerId] = socketId;
+  }
+
+  getPlayerId(socketId) {
+    return this.socketToPlayer[socketId] || null;
+  }
+
+  getSocketId(playerId) {
+    return this.playerToSocket[playerId] || null;
   }
 
   createGame(socketId) {
+    const playerId = this.getPlayerId(socketId);
     let code;
     do { code = generateCode(); } while (this.games[code]);
 
     const game = new GameEngine(code);
-    game.addPlayer(socketId);
+    game.addPlayer(playerId);
     this.games[code] = game;
-    this.playerGame[socketId] = code;
+    this.playerGame[playerId] = code;
 
     return { code, game };
   }
 
   joinGame(socketId, code) {
+    const playerId = this.getPlayerId(socketId);
     const game = this.games[code];
     if (!game) return { error: 'Game not found' };
     if (Object.keys(game.players).length >= 2) return { error: 'Game is full' };
 
-    if (!game.addPlayer(socketId)) return { error: 'Could not join game' };
-    this.playerGame[socketId] = code;
+    if (!game.addPlayer(playerId)) return { error: 'Could not join game' };
+    this.playerGame[playerId] = code;
 
     return { code, game };
   }
 
   startGame(socketId) {
-    const code = this.playerGame[socketId];
+    const playerId = this.getPlayerId(socketId);
+    const code = this.playerGame[playerId];
     if (!code) return { error: 'Not in a game' };
 
     const game = this.games[code];
@@ -46,24 +70,53 @@ export class LobbyManager {
     return { code, game };
   }
 
+  // Check if a player has an active game to reconnect to
+  tryReconnect(socketId) {
+    const playerId = this.getPlayerId(socketId);
+    const code = this.playerGame[playerId];
+    if (!code) return null;
+
+    const game = this.games[code];
+    if (!game) {
+      delete this.playerGame[playerId];
+      return null;
+    }
+
+    // Check this player is actually in this game
+    if (!game.players[playerId]) {
+      delete this.playerGame[playerId];
+      return null;
+    }
+
+    game.players[playerId].connected = true;
+    return { code, game };
+  }
+
   getGame(socketId) {
-    const code = this.playerGame[socketId];
+    const playerId = this.getPlayerId(socketId);
+    const code = this.playerGame[playerId];
     return code ? this.games[code] : null;
   }
 
   getCode(socketId) {
-    return this.playerGame[socketId] || null;
+    const playerId = this.getPlayerId(socketId);
+    return this.playerGame[playerId] || null;
   }
 
-  removePlayer(socketId) {
-    const code = this.playerGame[socketId];
-    if (!code) return;
+  removeSocket(socketId) {
+    const playerId = this.getPlayerId(socketId);
+    if (!playerId) return;
 
-    const game = this.games[code];
-    if (game && game.players[socketId]) {
-      game.players[socketId].connected = false;
+    // Mark player as disconnected but keep game alive
+    const code = this.playerGame[playerId];
+    if (code) {
+      const game = this.games[code];
+      if (game && game.players[playerId]) {
+        game.players[playerId].connected = false;
+      }
     }
 
-    delete this.playerGame[socketId];
+    delete this.socketToPlayer[socketId];
+    delete this.playerToSocket[playerId];
   }
 }

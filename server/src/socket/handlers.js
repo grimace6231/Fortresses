@@ -5,12 +5,32 @@ function broadcastState(io, lobby, code) {
   if (!game) return;
 
   for (const playerId of Object.keys(game.players)) {
+    const socketId = lobby.getSocketId(playerId);
+    if (!socketId) continue; // player disconnected
     const state = game.getStateForPlayer(playerId);
-    io.to(playerId).emit(EVENTS.GAME_STATE, state);
+    io.to(socketId).emit(EVENTS.GAME_STATE, state);
   }
 }
 
 export function registerHandlers(io, socket, lobby) {
+  // Register persistent player ID from auth
+  const playerId = socket.handshake.auth.playerId;
+  if (!playerId) {
+    socket.disconnect();
+    return;
+  }
+  lobby.registerSocket(socket.id, playerId);
+
+  // Check for reconnection to an existing game
+  const reconnect = lobby.tryReconnect(socket.id);
+  if (reconnect) {
+    socket.emit(EVENTS.GAME_RECONNECTED, { code: reconnect.code });
+    broadcastState(io, lobby, reconnect.code);
+  }
+
+  // Helper to get playerId for game engine calls
+  const pid = () => lobby.getPlayerId(socket.id);
+
   // Create a new game
   socket.on(EVENTS.CREATE_GAME, () => {
     const result = lobby.createGame(socket.id);
@@ -44,7 +64,7 @@ export function registerHandlers(io, socket, lobby) {
     const game = lobby.getGame(socket.id);
     if (!game || game.phase !== PHASES.DRAFT) return;
 
-    const result = game.draftPick(socket.id, roleId);
+    const result = game.draftPick(pid(), roleId);
     if (result.error) {
       socket.emit(EVENTS.GAME_ERROR, { message: result.error });
       return;
@@ -58,7 +78,7 @@ export function registerHandlers(io, socket, lobby) {
     const game = lobby.getGame(socket.id);
     if (!game) return;
 
-    const result = game.takeGold(socket.id);
+    const result = game.takeGold(pid());
     if (result.error) {
       socket.emit(EVENTS.GAME_ERROR, { message: result.error });
       return;
@@ -72,7 +92,7 @@ export function registerHandlers(io, socket, lobby) {
     const game = lobby.getGame(socket.id);
     if (!game) return;
 
-    const result = game.drawCards(socket.id);
+    const result = game.drawCards(pid());
     if (result.error) {
       socket.emit(EVENTS.GAME_ERROR, { message: result.error });
       return;
@@ -86,7 +106,7 @@ export function registerHandlers(io, socket, lobby) {
     const game = lobby.getGame(socket.id);
     if (!game) return;
 
-    const result = game.keepCard(socket.id, cardId);
+    const result = game.keepCard(pid(), cardId);
     if (result.error) {
       socket.emit(EVENTS.GAME_ERROR, { message: result.error });
       return;
@@ -100,7 +120,7 @@ export function registerHandlers(io, socket, lobby) {
     const game = lobby.getGame(socket.id);
     if (!game) return;
 
-    const result = game.buildDistrict(socket.id, cardId);
+    const result = game.buildDistrict(pid(), cardId);
     if (result.error) {
       socket.emit(EVENTS.GAME_ERROR, { message: result.error });
       return;
@@ -114,7 +134,7 @@ export function registerHandlers(io, socket, lobby) {
     const game = lobby.getGame(socket.id);
     if (!game) return;
 
-    const result = game.useAbility(socket.id, params);
+    const result = game.useAbility(pid(), params);
     if (result.error) {
       socket.emit(EVENTS.GAME_ERROR, { message: result.error });
       return;
@@ -128,7 +148,7 @@ export function registerHandlers(io, socket, lobby) {
     const game = lobby.getGame(socket.id);
     if (!game) return;
 
-    const result = game.endTurn(socket.id);
+    const result = game.endTurn(pid());
     if (result.error) {
       socket.emit(EVENTS.GAME_ERROR, { message: result.error });
       return;
@@ -137,8 +157,8 @@ export function registerHandlers(io, socket, lobby) {
     broadcastState(io, lobby, lobby.getCode(socket.id));
   });
 
-  // Disconnect
+  // Disconnect — keep game alive
   socket.on('disconnect', () => {
-    lobby.removePlayer(socket.id);
+    lobby.removeSocket(socket.id);
   });
 }
