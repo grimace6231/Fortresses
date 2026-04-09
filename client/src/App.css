@@ -336,7 +336,10 @@ button.district-card:hover:not(:disabled) {
 }
 
 .role-card.selected { border-color: #f0c040; background: #2a2a1a; }
-.role-card.discarded { opacity: 0.5; border-color: #cc4444; }
+.role-card.discard-mode { border-color: #cc4444; }
+.role-card.discard-mode:hover:not(:disabled) { background: #4a2020; }
+
+.discard-prompt { color: #ff9090 !important; }
 
 .role-num {
   font-size: 1.2rem;

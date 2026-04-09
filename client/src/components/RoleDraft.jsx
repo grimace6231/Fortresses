@@ -1,4 +1,4 @@
-import { EVENTS, ROLE_LIST, DISTRICT_COLORS } from '../../../shared/constants.js';
+import { EVENTS, ROLE_LIST } from '../../../shared/constants.js';
 
 const ROLE_DESCRIPTIONS = {
   1: 'Kill a role — they skip their turn',
@@ -16,7 +16,8 @@ export function RoleDraft({ gameState, emit }) {
   if (!draft) return null;
 
   const isMyTurn = draft.currentPicker === gameState.myId;
-  const pickedRoleIds = new Set(me.roles.map(r => r.id));
+  const isPicking = draft.action === 'pick';
+  const isDiscarding = draft.action === 'discard';
 
   const handlePick = (roleId) => {
     emit(EVENTS.DRAFT_PICK, { roleId });
@@ -28,22 +29,23 @@ export function RoleDraft({ gameState, emit }) {
 
       <div className="draft-status">
         {isMyTurn
-          ? <span className="your-turn">Your turn to pick a role</span>
+          ? isPicking
+            ? <span className="your-turn">Choose a role to keep</span>
+            : <span className="your-turn discard-prompt">Choose a role to discard</span>
           : <span className="waiting-turn">Opponent is choosing...</span>
         }
       </div>
 
-      {/* Available roles (only shown on your pick) */}
+      {/* Available roles (only shown on your turn) */}
       {isMyTurn && draft.available && (
         <div className="available-roles">
-          <h3>Choose a Role</h3>
+          <h3>{isPicking ? 'Pick a Role' : 'Discard a Role'}</h3>
           <div className="role-list">
             {[...draft.available].sort((a, b) => a.id - b.id).map(role => (
               <button
                 key={role.id}
-                className="role-card selectable"
+                className={`role-card selectable ${isDiscarding ? 'discard-mode' : ''}`}
                 onClick={() => handlePick(role.id)}
-                disabled={pickedRoleIds.has(role.id)}
               >
                 <span className="role-num">{role.id}</span>
                 <span className="role-name">{role.name}</span>

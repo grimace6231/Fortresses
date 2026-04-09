@@ -101,30 +101,29 @@ export class GameEngine {
     const shuffled = shuffle(allRoles);
 
     // 2-player draft:
-    // 1. Remove 1 face-down (hidden)
+    // 1. Remove 1 face-down randomly (hidden)
     const faceDown = shuffled.pop();
-    // 2. Remove 1 face-up (visible)
-    const faceUp1 = shuffled.pop();
 
     const playerIds = Object.keys(this.players);
     const crownPlayer = this.crownHolder;
     const otherPlayer = playerIds.find(p => p !== crownPlayer);
 
     this.draftState = {
-      available: shuffled, // 6 remaining roles
+      available: shuffled, // 7 remaining roles
       faceDown: [faceDown],
-      faceUp: [faceUp1],
-      picks: [], // ordered list of {playerId, step}
+      discarded: [],
       currentPicker: crownPlayer,
       otherPlayer: otherPlayer,
-      step: 0, // 0-5 steps in the draft
-      // Steps:
-      // 0: Crown player picks 1st role (from 6)
-      // 1: Remove 1 face-up (5 → 4)
-      // 2: Other player picks 1st role (from 4)
-      // 3: Remove 1 face-up (3 → 2)
-      // 4: Crown player picks 2nd role (from 2)
-      // 5: Other player gets last role
+      action: 'pick', // 'pick' or 'discard'
+      step: 0,
+      // Steps (each player picks then discards):
+      // 0: Crown player picks (from 7)
+      // 1: Crown player discards (from 6)
+      // 2: Other player picks (from 5)
+      // 3: Other player discards (from 4)
+      // 4: Crown player picks (from 3)
+      // 5: Crown player discards (from 2)
+      // 6: Other player gets last role (auto)
     };
 
     return this.getDraftView();
@@ -133,65 +132,43 @@ export class GameEngine {
   draftPick(playerId, roleId) {
     const ds = this.draftState;
     if (!ds) return { error: 'No draft in progress' };
+    if (playerId !== ds.currentPicker) return { error: 'Not your turn' };
 
-    const step = ds.step;
-
-    // Steps 0, 2, 4 are player picks
-    if (step === 0) {
-      if (playerId !== ds.currentPicker) return { error: 'Not your turn to pick' };
-      return this._draftPlayerPick(playerId, roleId, () => {
-        // After pick: remove 1 face-up, then other player picks
-        ds.step = 1;
-        const removed = ds.available.splice(Math.floor(Math.random() * ds.available.length), 1)[0];
-        ds.faceUp.push(removed);
-        ds.step = 2;
-        ds.currentPicker = ds.otherPlayer;
-      });
-    }
-
-    if (step === 2) {
-      if (playerId !== ds.currentPicker) return { error: 'Not your turn to pick' };
-      return this._draftPlayerPick(playerId, roleId, () => {
-        ds.step = 3;
-        const removed = ds.available.splice(Math.floor(Math.random() * ds.available.length), 1)[0];
-        ds.faceUp.push(removed);
-        ds.step = 4;
-        ds.currentPicker = ds.otherPlayer === playerId
-          ? Object.keys(this.players).find(p => p !== playerId)
-          : ds.otherPlayer;
-        // Wait — step 4 is crown player's 2nd pick
-        const playerIds = Object.keys(this.players);
-        ds.currentPicker = this.crownHolder;
-      });
-    }
-
-    if (step === 4) {
-      if (playerId !== ds.currentPicker) return { error: 'Not your turn to pick' };
-      return this._draftPlayerPick(playerId, roleId, () => {
-        // Step 5: last role goes to other player automatically
-        ds.step = 5;
-        const lastRole = ds.available[0];
-        const otherPid = Object.keys(this.players).find(p => p !== playerId);
-        this.players[otherPid].roles.push(lastRole);
-        ds.available = [];
-        // Draft complete — start turns
-        this.startTurnPhase();
-      });
-    }
-
-    return { error: 'Invalid draft step' };
-  }
-
-  _draftPlayerPick(playerId, roleId, afterPick) {
-    const ds = this.draftState;
     const roleIndex = ds.available.findIndex(r => r.id === roleId);
     if (roleIndex === -1) return { error: 'Role not available' };
 
     const role = ds.available.splice(roleIndex, 1)[0];
-    this.players[playerId].roles.push(role);
-    ds.picks.push({ playerId, roleId });
 
-    afterPick();
+    if (ds.action === 'pick') {
+      // Player takes this role
+      this.players[playerId].roles.push(role);
+      // Now they must discard one
+      ds.action = 'discard';
+      ds.step++;
+    } else {
+      // Player discards this role
+      ds.discarded.push(role);
+      ds.action = 'pick';
+      ds.step++;
+
+      // Check if draft is complete
+      if (ds.available.length === 1) {
+        // Last role goes to other player automatically
+        const lastRole = ds.available[0];
+        const otherPid = Object.keys(this.players).find(p => p !== playerId);
+        this.players[otherPid].roles.push(lastRole);
+        ds.available = [];
+        ds.step = 7;
+        this.startTurnPhase();
+        return { success: true };
+      }
+
+      // Switch to other player
+      ds.currentPicker = ds.currentPicker === this.crownHolder
+        ? Object.keys(this.players).find(p => p !== this.crownHolder)
+        : this.crownHolder;
+    }
+
     return { success: true };
   }
 
@@ -201,8 +178,8 @@ export class GameEngine {
 
     return {
       available: ds.currentPicker === forPlayerId ? ds.available : ds.available.map(() => null),
-      faceUp: ds.faceUp,
       currentPicker: ds.currentPicker,
+      action: ds.action,
       step: ds.step,
       myRoles: forPlayerId ? this.players[forPlayerId].roles : [],
     };
