@@ -421,6 +421,7 @@ export class GameEngine {
     // Magician can use before or after income
 
     const result = ability.execute(this, playerId, params);
+    if (result?.error) return { error: result.error };
     this.currentTurn.hasUsedAbility = true;
 
     // Log ability usage

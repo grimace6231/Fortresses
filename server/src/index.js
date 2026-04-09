@@ -25,6 +25,9 @@ io.on('connection', (socket) => {
   registerHandlers(io, socket, lobby);
 });
 
+// Clean up finished/abandoned games every 5 minutes
+setInterval(() => lobby.cleanup(), 5 * 60 * 1000);
+
 const PORT = process.env.PORT || 3001;
 httpServer.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);

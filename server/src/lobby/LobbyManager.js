@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { GameEngine } from '../game/GameEngine.js';
 
 function generateCode() {
@@ -10,11 +11,26 @@ export class LobbyManager {
     this.playerGame = {}; // { playerId: gameCode }
     this.socketToPlayer = {}; // { socketId: playerId }
     this.playerToSocket = {}; // { playerId: socketId }
+    this.playerTokens = {}; // { playerId: token } — server-generated secrets
+  }
+
+  // Validate or create a player identity
+  // Returns playerId if valid, null if spoofed
+  authenticatePlayer(clientPlayerId, clientToken) {
+    if (clientPlayerId && clientToken && this.playerTokens[clientPlayerId] === clientToken) {
+      // Returning player with valid token
+      return clientPlayerId;
+    }
+
+    // New player — generate server-side ID and token
+    const playerId = crypto.randomUUID();
+    const token = crypto.randomBytes(32).toString('hex');
+    this.playerTokens[playerId] = token;
+    return { playerId, token, isNew: true };
   }
 
   // Map a socket to a persistent player ID
   registerSocket(socketId, playerId) {
-    // If this player already had a socket, clean up old mapping
     const oldSocket = this.playerToSocket[playerId];
     if (oldSocket) {
       delete this.socketToPlayer[oldSocket];
@@ -33,6 +49,13 @@ export class LobbyManager {
 
   createGame(socketId) {
     const playerId = this.getPlayerId(socketId);
+
+    // Prevent creating a new game if already in one
+    const existingCode = this.playerGame[playerId];
+    if (existingCode && this.games[existingCode]) {
+      return { error: 'Already in a game' };
+    }
+
     let code;
     do { code = generateCode(); } while (this.games[code]);
 
@@ -118,5 +141,30 @@ export class LobbyManager {
 
     delete this.socketToPlayer[socketId];
     delete this.playerToSocket[playerId];
+  }
+
+  // Clean up finished or abandoned games (call periodically)
+  cleanup() {
+    const now = Date.now();
+    for (const [code, game] of Object.entries(this.games)) {
+      const allDisconnected = Object.values(game.players).every(p => !p.connected);
+      const isOver = game.phase === 'game_over';
+
+      // Remove games that are finished or where all players disconnected 10min ago
+      if (isOver || allDisconnected) {
+        if (!game._cleanupTimer) {
+          game._cleanupTimer = now;
+        } else if (now - game._cleanupTimer > 10 * 60 * 1000) {
+          // Remove game and player mappings
+          for (const pid of Object.keys(game.players)) {
+            delete this.playerGame[pid];
+            delete this.playerTokens[pid];
+          }
+          delete this.games[code];
+        }
+      } else {
+        game._cleanupTimer = null;
+      }
+    }
   }
 }

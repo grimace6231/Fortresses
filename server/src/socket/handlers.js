@@ -13,12 +13,21 @@ function broadcastState(io, lobby, code) {
 }
 
 export function registerHandlers(io, socket, lobby) {
-  // Register persistent player ID from auth
-  const playerId = socket.handshake.auth.playerId;
-  if (!playerId) {
-    socket.disconnect();
-    return;
+  // Authenticate: validate returning player or create new identity
+  const clientPlayerId = socket.handshake.auth.playerId;
+  const clientToken = socket.handshake.auth.token;
+  const authResult = lobby.authenticatePlayer(clientPlayerId, clientToken);
+
+  let playerId;
+  if (typeof authResult === 'string') {
+    // Returning player with valid token
+    playerId = authResult;
+  } else {
+    // New player — send them their credentials
+    playerId = authResult.playerId;
+    socket.emit('auth', { playerId: authResult.playerId, token: authResult.token });
   }
+
   lobby.registerSocket(socket.id, playerId);
 
   // Check for reconnection to an existing game
@@ -34,12 +43,20 @@ export function registerHandlers(io, socket, lobby) {
   // Create a new game
   socket.on(EVENTS.CREATE_GAME, () => {
     const result = lobby.createGame(socket.id);
+    if (result.error) {
+      socket.emit(EVENTS.GAME_ERROR, { message: result.error });
+      return;
+    }
     socket.emit(EVENTS.GAME_CREATED, { code: result.code });
   });
 
   // Join an existing game
-  socket.on(EVENTS.JOIN_GAME, ({ code }) => {
-    const result = lobby.joinGame(socket.id, code.toUpperCase());
+  socket.on(EVENTS.JOIN_GAME, (data) => {
+    if (!data || typeof data.code !== 'string') {
+      socket.emit(EVENTS.GAME_ERROR, { message: 'Invalid game code' });
+      return;
+    }
+    const result = lobby.joinGame(socket.id, data.code.toUpperCase());
     if (result.error) {
       socket.emit(EVENTS.GAME_ERROR, { message: result.error });
       return;

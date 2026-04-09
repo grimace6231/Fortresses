@@ -2,13 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 import { EVENTS } from '../../../shared/constants.js';
 
-function getPlayerId() {
-  let id = localStorage.getItem('fortresses-player-id');
-  if (!id) {
-    id = crypto.randomUUID();
-    localStorage.setItem('fortresses-player-id', id);
-  }
-  return id;
+function getAuth() {
+  return {
+    playerId: localStorage.getItem('fortresses-player-id') || null,
+    token: localStorage.getItem('fortresses-token') || null,
+  };
 }
 
 export function useSocket() {
@@ -20,12 +18,18 @@ export function useSocket() {
 
   useEffect(() => {
     const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
-    const playerId = getPlayerId();
-    const socket = io(serverUrl, { auth: { playerId } });
+    const auth = getAuth();
+    const socket = io(serverUrl, { auth });
     socketRef.current = socket;
 
     socket.on('connect', () => setConnected(true));
     socket.on('disconnect', () => setConnected(false));
+
+    // Server issues credentials on first connect
+    socket.on('auth', ({ playerId, token }) => {
+      localStorage.setItem('fortresses-player-id', playerId);
+      localStorage.setItem('fortresses-token', token);
+    });
 
     socket.on(EVENTS.GAME_CREATED, ({ code }) => {
       setGameCode(code);
