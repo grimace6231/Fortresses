@@ -136,6 +136,12 @@ export function Game({ gameState, emit, error }) {
         </div>
         {error && <div className="error">{error}</div>}
         <GameLog logs={logs} />
+        <button
+          className="btn-quit"
+          onClick={() => { if (confirm('Quit the game? This cannot be undone.')) emit(EVENTS.QUIT_GAME); }}
+        >
+          Quit Game
+        </button>
       </div>
     </div>
   );

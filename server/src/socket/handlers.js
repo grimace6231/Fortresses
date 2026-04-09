@@ -202,6 +202,26 @@ export function registerHandlers(io, socket, lobby) {
     broadcastState(io, lobby, lobby.getCode(socket.id));
   });
 
+  // Quit game
+  socket.on(EVENTS.QUIT_GAME, () => {
+    const code = lobby.getCode(socket.id);
+    if (!code) return;
+
+    const game = lobby.games[code];
+    if (!game) return;
+
+    // Notify all players the game was quit
+    for (const pid of Object.keys(game.players)) {
+      const sid = lobby.getSocketId(pid);
+      if (sid) {
+        io.to(sid).emit(EVENTS.GAME_QUIT);
+        delete lobby.playerGame[pid];
+      }
+    }
+
+    delete lobby.games[code];
+  });
+
   // Disconnect — keep game alive
   socket.on('disconnect', () => {
     lobby.removeSocket(socket.id);

@@ -53,6 +53,11 @@ export function useSocket() {
       setError(message);
     });
 
+    socket.on(EVENTS.GAME_QUIT, () => {
+      setGameState(null);
+      setGameCode(null);
+    });
+
     return () => socket.disconnect();
   }, []);
 

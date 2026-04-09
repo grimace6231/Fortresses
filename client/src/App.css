@@ -481,6 +481,19 @@ button.district-card:hover:not(:disabled) {
 
 .muted { color: #666; font-size: 0.85rem; }
 
+.btn-quit {
+  background: transparent;
+  color: #884444;
+  border: 1px solid #553333;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  margin-top: 8px;
+  width: 100%;
+  transition: background 0.2s, color 0.2s;
+}
+.btn-quit:hover { background: #331111; color: #cc6666; }
+
 /* ── iPad / Tablet — Portrait (768-1024px) ── */
 @media (max-width: 1024px) {
   /* Stack game layout vertically, move sidebar to bottom */

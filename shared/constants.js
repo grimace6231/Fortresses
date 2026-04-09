@@ -102,6 +102,8 @@ export const EVENTS = {
   END_TURN: 'end-turn',
   USE_LABORATORY: 'use-laboratory',
   USE_SMITHY: 'use-smithy',
+  QUIT_GAME: 'quit-game',
+  GAME_QUIT: 'game-quit',
 
   // Game over
   GAME_OVER: 'game-over',
