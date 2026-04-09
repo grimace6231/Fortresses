@@ -232,12 +232,64 @@ button.district-card:hover:not(:disabled) {
   box-shadow: 0 4px 12px rgba(0,0,0,0.4);
 }
 
+.district-card-wrapper {
+  position: relative;
+}
+
 .district-cost {
   font-size: 1rem;
   font-weight: bold;
 }
 .district-name { font-size: 0.65rem; line-height: 1.2; }
 .district-color { font-size: 0.6rem; opacity: 0.7; }
+
+.district-info-icon {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.3);
+  color: #fff;
+  font-size: 0.55rem;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.has-desc { cursor: pointer; }
+
+.district-tooltip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1a1a2e;
+  border: 1px solid #aa66cc;
+  border-radius: 8px;
+  padding: 10px 12px;
+  width: 180px;
+  z-index: 100;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+  cursor: pointer;
+}
+
+.district-tooltip strong {
+  color: #cc99ee;
+  font-size: 0.85rem;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.district-tooltip p {
+  color: #ccc;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  margin: 0;
+}
 
 /* ── Center Panel / Draft ── */
 .center-panel {
@@ -473,6 +525,19 @@ button.district-card:hover:not(:disabled) {
   }
   .district-cost { font-size: 1.1rem; }
   .district-name { font-size: 0.7rem; }
+
+  /* Larger tooltip for touch */
+  .district-tooltip {
+    width: 200px;
+    padding: 12px 14px;
+  }
+  .district-tooltip strong { font-size: 0.9rem; }
+  .district-tooltip p { font-size: 0.85rem; }
+  .district-info-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 0.65rem;
+  }
 
   /* Larger role cards in draft */
   .role-card {

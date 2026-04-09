@@ -49,16 +49,16 @@ export const DISTRICT_CARDS = [
   { name: 'Fortress', cost: 5, color: 'military', count: 2 },
 
   // Unique (purple) - 10 cards
-  { name: 'Haunted Quarter', cost: 2, color: 'unique', count: 1 },
-  { name: 'Keep', cost: 3, color: 'unique', count: 2 },
-  { name: 'Laboratory', cost: 5, color: 'unique', count: 1 },
-  { name: 'Smithy', cost: 5, color: 'unique', count: 1 },
-  { name: 'Graveyard', cost: 5, color: 'unique', count: 1 },
-  { name: 'Observatory', cost: 5, color: 'unique', count: 1 },
-  { name: 'School of Magic', cost: 6, color: 'unique', count: 1 },
-  { name: 'Library', cost: 6, color: 'unique', count: 1 },
-  { name: 'Dragon Gate', cost: 6, color: 'unique', count: 1 },
-  { name: 'University', cost: 6, color: 'unique', count: 1 },
+  { name: 'Haunted Quarter', cost: 2, color: 'unique', count: 1, desc: 'Counts as any color for end-game bonus' },
+  { name: 'Keep', cost: 3, color: 'unique', count: 2, desc: 'Cannot be destroyed by the Warlord' },
+  { name: 'Laboratory', cost: 5, color: 'unique', count: 1, desc: 'Discard a card for 2 gold (once per turn)' },
+  { name: 'Smithy', cost: 5, color: 'unique', count: 1, desc: 'Pay 2 gold to draw 3 cards (once per turn)' },
+  { name: 'Graveyard', cost: 5, color: 'unique', count: 1, desc: 'Pay 1 gold to recover a destroyed district' },
+  { name: 'Observatory', cost: 5, color: 'unique', count: 1, desc: 'Draw 3 cards instead of 2 (keep 1)' },
+  { name: 'School of Magic', cost: 6, color: 'unique', count: 1, desc: 'Counts as any color for role bonuses' },
+  { name: 'Library', cost: 6, color: 'unique', count: 1, desc: 'Keep both cards when drawing' },
+  { name: 'Dragon Gate', cost: 6, color: 'unique', count: 1, desc: 'Worth 8 points at end of game' },
+  { name: 'University', cost: 6, color: 'unique', count: 1, desc: 'Worth 8 points at end of game' },
 ];
 
 // Game phases

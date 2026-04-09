@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { DISTRICT_COLORS } from '../../../shared/constants.js';
 
 const COLOR_STYLE = {
@@ -9,19 +10,40 @@ const COLOR_STYLE = {
 };
 
 function DistrictCard({ district, onClick, disabled, highlight }) {
+  const [showDesc, setShowDesc] = useState(false);
   const style = COLOR_STYLE[district.color] || {};
+  const hasDesc = district.color === 'unique' && district.desc;
+
+  const handleClick = (e) => {
+    if (hasDesc && !onClick) {
+      e.stopPropagation();
+      setShowDesc(prev => !prev);
+      return;
+    }
+    if (onClick) onClick();
+  };
+
   return (
-    <button
-      className={`district-card ${highlight ? 'highlight' : ''}`}
-      style={style}
-      onClick={onClick}
-      disabled={disabled}
-      title={`${district.name} — Cost: ${district.cost}`}
-    >
-      <span className="district-cost">{district.cost}</span>
-      <span className="district-name">{district.name}</span>
-      <span className="district-color">{DISTRICT_COLORS[district.color]?.label}</span>
-    </button>
+    <div className="district-card-wrapper">
+      <button
+        className={`district-card ${highlight ? 'highlight' : ''} ${hasDesc ? 'has-desc' : ''}`}
+        style={style}
+        onClick={handleClick}
+        disabled={disabled && !hasDesc}
+        title={`${district.name} — Cost: ${district.cost}`}
+      >
+        <span className="district-cost">{district.cost}</span>
+        <span className="district-name">{district.name}</span>
+        <span className="district-color">{DISTRICT_COLORS[district.color]?.label}</span>
+        {hasDesc && <span className="district-info-icon">?</span>}
+      </button>
+      {hasDesc && showDesc && (
+        <div className="district-tooltip" onClick={() => setShowDesc(false)}>
+          <strong>{district.name}</strong>
+          <p>{district.desc}</p>
+        </div>
+      )}
+    </div>
   );
 }
 
