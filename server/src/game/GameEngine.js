@@ -144,10 +144,8 @@ export class GameEngine {
         ds.currentPicker = Object.keys(this.players).find(p => p !== playerId);
         // Other player will pick + discard
       } else if (ds.available.length === 1) {
-        // Only 1 left — auto-assign to other player, draft done
-        const lastRole = ds.available[0];
-        const otherPid = Object.keys(this.players).find(p => p !== playerId);
-        this.players[otherPid].roles.push(lastRole);
+        // Last role is discarded, draft done
+        ds.discarded.push(ds.available[0]);
         ds.available = [];
         this.startTurnPhase();
       } else {
