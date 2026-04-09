@@ -113,17 +113,13 @@ export class GameEngine {
       faceDown: [faceDown],
       discarded: [],
       currentPicker: crownPlayer,
-      otherPlayer: otherPlayer,
       action: 'pick', // 'pick' or 'discard'
-      step: 0,
-      // Steps (each player picks then discards):
-      // 0: Crown player picks (from 7)
-      // 1: Crown player discards (from 6)
-      // 2: Other player picks (from 5)
-      // 3: Other player discards (from 4)
-      // 4: Crown player picks (from 3)
-      // 5: Crown player discards (from 2)
-      // 6: Other player gets last role (auto)
+      firstTurn: true, // first turn = pick only, no discard
+      // Flow:
+      // Crown player: pick only (first turn, 7→6)
+      // Other player: pick + discard (6→4)
+      // Crown player: pick + discard (4→2)
+      // Other player: pick (2→1), last auto-assigned to crown
     };
 
     return this.getDraftView();
@@ -140,28 +136,28 @@ export class GameEngine {
     const role = ds.available.splice(roleIndex, 1)[0];
 
     if (ds.action === 'pick') {
-      // Player takes this role
       this.players[playerId].roles.push(role);
-      // Now they must discard one
-      ds.action = 'discard';
-      ds.step++;
-    } else {
-      // Player discards this role
-      ds.discarded.push(role);
-      ds.action = 'pick';
-      ds.step++;
 
-      // Check if draft is complete
-      if (ds.available.length === 1) {
-        // Last role goes to other player automatically
+      if (ds.firstTurn) {
+        // First turn: pick only, no discard — switch to other player
+        ds.firstTurn = false;
+        ds.currentPicker = Object.keys(this.players).find(p => p !== playerId);
+        // Other player will pick + discard
+      } else if (ds.available.length === 1) {
+        // Only 1 left — auto-assign to other player, draft done
         const lastRole = ds.available[0];
         const otherPid = Object.keys(this.players).find(p => p !== playerId);
         this.players[otherPid].roles.push(lastRole);
         ds.available = [];
-        ds.step = 7;
         this.startTurnPhase();
-        return { success: true };
+      } else {
+        // Must discard one now
+        ds.action = 'discard';
       }
+    } else {
+      // Player discards this role
+      ds.discarded.push(role);
+      ds.action = 'pick';
 
       // Switch to other player
       ds.currentPicker = ds.currentPicker === this.crownHolder
