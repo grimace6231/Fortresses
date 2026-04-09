@@ -520,36 +520,44 @@ button.district-card:hover:not(:disabled) {
     min-height: 44px;
   }
 
-  /* Larger district cards */
+  /* Larger district cards for iPad */
   .district-card {
-    width: 90px;
-    padding: 8px;
-    font-size: 0.75rem;
+    width: 110px;
+    padding: 10px 8px;
+    font-size: 0.85rem;
+    border-radius: 8px;
+    border-width: 3px;
   }
-  .district-cost { font-size: 1.1rem; }
-  .district-name { font-size: 0.7rem; }
+  .district-cost { font-size: 1.4rem; }
+  .district-name { font-size: 0.8rem; }
+  .district-color { font-size: 0.7rem; }
+
+  /* Larger info icon — easy to tap */
+  .district-info-icon {
+    width: 24px;
+    height: 24px;
+    font-size: 0.75rem;
+    top: 3px;
+    right: 5px;
+  }
 
   /* Larger tooltip for touch */
   .district-tooltip {
-    width: 200px;
-    padding: 12px 14px;
+    width: 220px;
+    padding: 14px 16px;
   }
-  .district-tooltip strong { font-size: 0.9rem; }
-  .district-tooltip p { font-size: 0.85rem; }
-  .district-info-icon {
-    width: 18px;
-    height: 18px;
-    font-size: 0.65rem;
-  }
+  .district-tooltip strong { font-size: 1rem; }
+  .district-tooltip p { font-size: 0.9rem; line-height: 1.5; }
 
   /* Larger role cards in draft */
   .role-card {
-    width: 140px;
-    padding: 12px;
-    font-size: 0.85rem;
+    width: 160px;
+    padding: 14px;
+    font-size: 0.9rem;
   }
-  .role-num { font-size: 1.3rem; }
-  .role-desc { font-size: 0.75rem; }
+  .role-num { font-size: 1.5rem; }
+  .role-name { font-size: 0.95rem; }
+  .role-desc { font-size: 0.8rem; line-height: 1.4; }
 
   /* Card choice buttons */
   .district-card-btn {
