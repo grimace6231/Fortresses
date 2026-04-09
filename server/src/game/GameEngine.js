@@ -258,7 +258,8 @@ export class GameEngine {
 
       // Warlord: auto-collect military district bonus (destroy is still manual)
       if (roleId === 8) {
-        const bonus = this.players[holder].city.filter(d => d.color === 'military').length;
+        let bonus = this.players[holder].city.filter(d => d.color === 'military').length;
+        if (this.players[holder].city.some(d => d.name === 'School of Magic')) bonus += 1;
         this.players[holder].gold += bonus;
         if (bonus > 0) {
           this._log(`The Warlord collects ${bonus} bonus gold from military districts.`);
@@ -423,8 +424,14 @@ export class GameEngine {
     for (const [pid, player] of Object.entries(this.players)) {
       let score = 0;
 
-      // Sum district costs
-      score += player.city.reduce((sum, d) => sum + d.cost, 0);
+      // Sum district costs (Dragon Gate & University score 8 instead of 6)
+      for (const d of player.city) {
+        if (d.name === 'Dragon Gate' || d.name === 'University') {
+          score += 8;
+        } else {
+          score += d.cost;
+        }
+      }
 
       // First to 8 districts: +4
       if (pid === this.firstToComplete) score += 4;
@@ -432,8 +439,20 @@ export class GameEngine {
       else if (player.city.length >= DISTRICTS_TO_WIN) score += 2;
 
       // All 5 colors: +3
+      // Haunted Quarter counts as any color for this bonus
       const colors = new Set(player.city.map(d => d.color));
-      if (colors.size >= 5) score += 3;
+      const hasHauntedQuarter = player.city.some(d => d.name === 'Haunted Quarter');
+      if (hasHauntedQuarter) {
+        // Add whichever colors are missing (Haunted Quarter fills one gap)
+        const needed = ['noble', 'religious', 'trade', 'military', 'unique'];
+        const missing = needed.filter(c => !colors.has(c));
+        if (missing.length <= 1) {
+          // Haunted Quarter fills the one missing color
+          score += 3;
+        }
+      } else if (colors.size >= 5) {
+        score += 3;
+      }
 
       scores[pid] = score;
     }

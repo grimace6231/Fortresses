@@ -1,5 +1,9 @@
-// Role ability implementations
-// Each returns an object describing the result of the ability
+// Count districts matching a color, including School of Magic as a wildcard
+function countColor(city, color) {
+  let count = city.filter(d => d.color === color).length;
+  if (city.some(d => d.name === 'School of Magic')) count += 1;
+  return count;
+}
 
 export const roleAbilities = {
   // 1 - Assassin: name a role to kill (they skip their turn)
@@ -67,7 +71,7 @@ export const roleAbilities = {
     needsTarget: null,
     execute: (game, playerId) => {
       game.crownHolder = playerId;
-      const bonus = game.players[playerId].city.filter(d => d.color === 'noble').length;
+      const bonus = countColor(game.players[playerId].city, 'noble');
       game.players[playerId].gold += bonus;
       return { type: 'king', bonus };
     },
@@ -78,7 +82,7 @@ export const roleAbilities = {
     name: 'Bishop',
     needsTarget: null,
     execute: (game, playerId) => {
-      const bonus = game.players[playerId].city.filter(d => d.color === 'religious').length;
+      const bonus = countColor(game.players[playerId].city, 'religious');
       game.players[playerId].gold += bonus;
       return { type: 'bishop', bonus };
     },
@@ -90,7 +94,7 @@ export const roleAbilities = {
     needsTarget: null,
     execute: (game, playerId) => {
       game.players[playerId].gold += 1; // extra gold
-      const bonus = game.players[playerId].city.filter(d => d.color === 'trade').length;
+      const bonus = countColor(game.players[playerId].city, 'trade');
       game.players[playerId].gold += bonus;
       return { type: 'merchant', bonus: bonus + 1 };
     },
