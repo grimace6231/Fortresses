@@ -71,6 +71,14 @@ export class LobbyManager {
     const playerId = this.getPlayerId(socketId);
     const game = this.games[code];
     if (!game) return { error: 'Game not found' };
+
+    // Allow reconnecting to your own game
+    if (game.players[playerId]) {
+      game.players[playerId].connected = true;
+      this.playerGame[playerId] = code;
+      return { code, game };
+    }
+
     if (Object.keys(game.players).length >= 2) return { error: 'Game is full' };
 
     if (!game.addPlayer(playerId)) return { error: 'Could not join game' };

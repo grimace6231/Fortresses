@@ -151,6 +151,7 @@ export function ActionPanel({ gameState, emit, onWarlordTarget, setWarlordMode }
             >
               <strong>{card.name}</strong>
               <span> — {card.cost} gold ({card.color})</span>
+              {card.desc && <span className="drawn-card-desc">{card.desc}</span>}
             </button>
           ))}
         </div>

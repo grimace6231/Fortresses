@@ -203,10 +203,18 @@ export class GameEngine {
         continue;
       }
 
+      // King always takes the crown, even if assassinated
+      if (roleId === 4) {
+        this.crownHolder = holder;
+      }
+
       // Check if assassinated
       if (roleId === this.assassinatedRole) {
         const roleName = ROLE_LIST.find(r => r.id === roleId).name;
         this._log(`The ${roleName} was assassinated and loses their turn!`);
+        if (roleId === 4) {
+          this._log(`The King still takes the crown.`);
+        }
         this.turnIndex++;
         continue;
       }
@@ -237,7 +245,7 @@ export class GameEngine {
 
       // King/Bishop/Merchant/Warlord: passive effects only, color bonus is manual
       if (roleId === 4) {
-        this.crownHolder = holder;
+        // Crown already assigned before assassination check
         this._log(`The King takes the crown.`);
       }
       if (roleId === 6) {

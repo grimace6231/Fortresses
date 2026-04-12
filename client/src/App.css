@@ -265,8 +265,7 @@ button.district-card:hover:not(:disabled) {
 .district-tooltip {
   position: absolute;
   bottom: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
   background: #1a1a2e;
   border: 1px solid #aa66cc;
   border-radius: 8px;
@@ -412,6 +411,13 @@ button.district-card:hover:not(:disabled) {
   transition: background 0.2s;
 }
 .district-card-btn:hover { background: #2a3a6a; }
+.drawn-card-desc {
+  display: block;
+  font-size: 0.78rem;
+  color: #cc99ee;
+  font-style: italic;
+  margin-top: 4px;
+}
 
 .hand-select { display: flex; flex-direction: column; gap: 6px; }
 .card-check {
@@ -605,11 +611,12 @@ button.district-card:hover:not(:disabled) {
     width: 100%;
     border-left: none;
     border-top: 1px solid #333;
-    max-height: 200px;
+    max-height: 300px;
     flex-shrink: 0;
+    overflow-y: auto;
   }
 
-  .game-log { max-height: 150px; }
+  .game-log { max-height: 240px; }
 
   /* Bigger touch targets for buttons */
   .btn-primary, .btn-secondary, .btn-end-turn {

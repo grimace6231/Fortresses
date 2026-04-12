@@ -57,9 +57,9 @@ export function RoleDraft({ gameState, emit }) {
       )}
 
       {/* My selected roles */}
-      {me.roles.length > 0 && (
-        <div className="my-roles">
-          <h3>Your Roles This Round</h3>
+      <div className="my-roles">
+        <h3>Your Roles ({me.roles.length}/2)</h3>
+        {me.roles.length > 0 ? (
           <div className="role-list">
             {[...me.roles].sort((a, b) => a.id - b.id).map(role => (
               <div key={role.id} className="role-card selected">
@@ -69,8 +69,10 @@ export function RoleDraft({ gameState, emit }) {
               </div>
             ))}
           </div>
-        </div>
-      )}
+        ) : (
+          <p className="muted">No roles selected yet</p>
+        )}
+      </div>
     </div>
   );
 }
