@@ -9,7 +9,7 @@ const COLOR_STYLE = {
   unique: { background: '#aa66cc', color: '#fff' },
 };
 
-function DistrictCard({ district, onClick, disabled, highlight }) {
+function DistrictCard({ district, onClick, disabled, highlight, alreadyBuilt }) {
   const [showDesc, setShowDesc] = useState(false);
   const style = COLOR_STYLE[district.color] || {};
   const hasDesc = district.color === 'unique' && district.desc;
@@ -26,16 +26,17 @@ function DistrictCard({ district, onClick, disabled, highlight }) {
   return (
     <div className="district-card-wrapper">
       <button
-        className={`district-card ${highlight ? 'highlight' : ''} ${hasDesc ? 'has-desc' : ''}`}
+        className={`district-card ${highlight ? 'highlight' : ''} ${hasDesc ? 'has-desc' : ''} ${alreadyBuilt ? 'already-built' : ''}`}
         style={style}
         onClick={handleClick}
         disabled={disabled && !hasDesc}
-        title={`${district.name} — Cost: ${district.cost}`}
+        title={alreadyBuilt ? `${district.name} — Already built in your city` : `${district.name} — Cost: ${district.cost}`}
       >
         <span className="district-cost">{district.cost}</span>
         <span className="district-name">{district.name}</span>
         <span className="district-color">{DISTRICT_COLORS[district.color]?.label}</span>
         {hasDesc && <span className="district-info-icon">?</span>}
+        {alreadyBuilt && <span className="district-dupe-badge">Built</span>}
       </button>
       {hasDesc && showDesc && (
         <div className="district-tooltip" onClick={() => setShowDesc(false)}>
@@ -90,7 +91,8 @@ export function PlayerBoard({ player, isMe, label, onBuildDistrict, canBuild, on
           <div className="hand-label">Hand ({player.hand.length})</div>
           <div className="district-grid">
             {player.hand.map(card => {
-              const affordable = canBuild && card.cost <= player.gold;
+              const alreadyBuilt = player.city.some(d => d.name === card.name);
+              const affordable = canBuild && !alreadyBuilt && card.cost <= player.gold;
               return (
                 <DistrictCard
                   key={card.id}
@@ -98,6 +100,7 @@ export function PlayerBoard({ player, isMe, label, onBuildDistrict, canBuild, on
                   onClick={affordable ? () => onBuildDistrict(card.id) : undefined}
                   disabled={!affordable}
                   highlight={affordable}
+                  alreadyBuilt={alreadyBuilt && canBuild}
                 />
               );
             })}

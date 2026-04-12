@@ -188,6 +188,19 @@ export function ActionPanel({ gameState, emit, onWarlordTarget, setWarlordMode }
         </div>
       )}
 
+      {/* Color bonus collection */}
+      {turn.bonusColor && turn.hasCollectedBonus === false && (
+        <div className="ability-section">
+          <strong>Collect {turn.bonusColor.charAt(0).toUpperCase() + turn.bonusColor.slice(1)} Bonus:</strong>
+          <button
+            className="btn-ability"
+            onClick={() => emit(EVENTS.COLLECT_BONUS)}
+          >
+            +1 gold per {turn.bonusColor} district
+          </button>
+        </div>
+      )}
+
       {/* Building abilities: Laboratory & Smithy */}
       {(turn.canUseLaboratory || turn.canUseSmithy) && (
         <div className="ability-section">

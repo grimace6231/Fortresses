@@ -235,17 +235,17 @@ export class GameEngine {
         drawnCards: null, // set when drawing cards
       };
 
-      // Auto-execute passive abilities for king, bishop, merchant
-      if ([4, 5, 6].includes(roleId)) {
-        const ability = roleAbilities[roleId];
-        const result = ability.execute(this, holder);
-        this.currentTurn.hasUsedAbility = true;
-        if (result.bonus > 0) {
-          this._log(`The ${this.currentTurn.roleName} collects ${result.bonus} bonus gold from districts.`);
-        }
-        if (roleId === 4) {
-          this._log(`The King takes the crown.`);
-        }
+      // King/Bishop/Merchant/Warlord: passive effects only, color bonus is manual
+      if (roleId === 4) {
+        this.crownHolder = holder;
+        this._log(`The King takes the crown.`);
+      }
+      if (roleId === 6) {
+        this.players[holder].gold += 1;
+        this._log(`The Merchant receives 1 extra gold.`);
+      }
+      if ([4, 5, 6, 8].includes(roleId)) {
+        this.currentTurn.hasCollectedBonus = false;
       }
 
       // Architect: auto-execute (draw cards + set max builds)
@@ -254,16 +254,6 @@ export class GameEngine {
         ability.execute(this, holder);
         this.currentTurn.hasUsedAbility = true;
         this._log(`The Architect draws 2 extra cards and may build up to 3 districts.`);
-      }
-
-      // Warlord: auto-collect military district bonus (destroy is still manual)
-      if (roleId === 8) {
-        let bonus = this.players[holder].city.filter(d => d.color === 'military').length;
-        if (this.players[holder].city.some(d => d.name === 'School of Magic')) bonus += 1;
-        this.players[holder].gold += bonus;
-        if (bonus > 0) {
-          this._log(`The Warlord collects ${bonus} bonus gold from military districts.`);
-        }
       }
 
       return;
@@ -368,6 +358,34 @@ export class GameEngine {
     return { success: true };
   }
 
+  // Collect color bonus (King/Bishop/Merchant/Warlord) — usable at any point during turn
+  collectBonus(playerId) {
+    if (!this._validateTurn(playerId)) return { error: 'Not your turn' };
+    if (this.currentTurn.hasCollectedBonus === undefined) return { error: 'No color bonus for this role' };
+    if (this.currentTurn.hasCollectedBonus) return { error: 'Already collected bonus' };
+
+    const roleId = this.currentTurn.roleId;
+    const colorMap = { 4: 'noble', 5: 'religious', 6: 'trade', 8: 'military' };
+    const color = colorMap[roleId];
+    if (!color) return { error: 'No color bonus for this role' };
+
+    const player = this.players[playerId];
+    let bonus = player.city.filter(d => d.color === color).length;
+    if (player.city.some(d => d.name === 'School of Magic')) bonus += 1;
+
+    player.gold += bonus;
+    this.currentTurn.hasCollectedBonus = true;
+
+    const colorLabel = color.charAt(0).toUpperCase() + color.slice(1);
+    if (bonus > 0) {
+      this._log(`The ${this.currentTurn.roleName} collects ${bonus} bonus gold from ${colorLabel} districts.`);
+    } else {
+      this._log(`The ${this.currentTurn.roleName} has no ${colorLabel} districts to collect from.`);
+    }
+
+    return { success: true, bonus };
+  }
+
   buildDistrict(playerId, cardId) {
     if (!this._validateTurn(playerId)) return { error: 'Not your turn' };
     if (!this.currentTurn.hasTakenIncome) return { error: 'Must take income first' };
@@ -375,9 +393,6 @@ export class GameEngine {
     if (this.currentTurn.buildsRemaining <= 0) return { error: 'No builds remaining' };
 
     const player = this.players[playerId];
-
-    // Can't build past 8 districts
-    if (player.city.length >= DISTRICTS_TO_WIN) return { error: 'City is complete' };
 
     const cardIndex = player.hand.findIndex(c => c.id === cardId);
     if (cardIndex === -1) return { error: 'Card not in hand' };
@@ -560,6 +575,7 @@ export class GameEngine {
 
     // Turn state
     if (this.phase === PHASES.TURNS && this.currentTurn) {
+      const colorMap = { 4: 'noble', 5: 'religious', 6: 'trade', 8: 'military' };
       state.turn = {
         playerId: this.currentTurn.playerId,
         roleId: this.currentTurn.roleId,
@@ -569,6 +585,8 @@ export class GameEngine {
         hasUsedAbility: this.currentTurn.hasUsedAbility,
         buildsRemaining: this.currentTurn.buildsRemaining,
         drawnCards: this.currentTurn.playerId === playerId ? this.currentTurn.drawnCards : null,
+        hasCollectedBonus: this.currentTurn.hasCollectedBonus,
+        bonusColor: colorMap[this.currentTurn.roleId] || null,
       };
 
       // Building abilities available this turn

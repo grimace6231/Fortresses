@@ -8,6 +8,7 @@ import { GameLog } from './GameLog.jsx';
 export function Game({ gameState, emit, error }) {
   const [logs, setLogs] = useState([]);
   const [warlordMode, setWarlordMode] = useState(false);
+  const [eventAnimation, setEventAnimation] = useState(null);
   const prevStateRef = useRef(null);
 
   // Build game log from server events + state changes
@@ -47,8 +48,27 @@ export function Game({ gameState, emit, error }) {
       setLogs(l => [...l, ...newLogs]);
     }
 
+    // Detect assassination/theft for animations
+    if (gameState.newEvents && gameState.newEvents.length > 0) {
+      for (const msg of gameState.newEvents) {
+        if (msg.includes('was assassinated')) {
+          setEventAnimation({ type: 'assassin', message: msg });
+        } else if (msg.includes('steals') && msg.includes('gold from')) {
+          setEventAnimation({ type: 'thief', message: msg });
+        }
+      }
+    }
+
     prevStateRef.current = gameState;
   }, [gameState]);
+
+  // Auto-dismiss animation
+  useEffect(() => {
+    if (eventAnimation) {
+      const timer = setTimeout(() => setEventAnimation(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [eventAnimation]);
 
   if (!gameState) return null;
 
@@ -83,6 +103,16 @@ export function Game({ gameState, emit, error }) {
 
   return (
     <div className="game-layout">
+      {eventAnimation && (
+        <div className={`event-overlay ${eventAnimation.type}`} key={Date.now()}>
+          <div className="event-overlay-content">
+            <span className="event-icon">
+              {eventAnimation.type === 'assassin' ? '\u{1F5E1}' : '\u{1F4B0}'}
+            </span>
+            <span className="event-message">{eventAnimation.message}</span>
+          </div>
+        </div>
+      )}
       <div className="game-main">
         {/* Opponent */}
         <PlayerBoard
@@ -136,6 +166,10 @@ export function Game({ gameState, emit, error }) {
         </div>
         {error && <div className="error">{error}</div>}
         <GameLog logs={logs} />
+        <div className="game-code-display">
+          <span className="game-code-label">Game Code</span>
+          <span className="game-code-value">{gameState.gameId}</span>
+        </div>
         <button
           className="btn-quit"
           onClick={() => { if (confirm('Quit the game? This cannot be undone.')) emit(EVENTS.QUIT_GAME); }}
