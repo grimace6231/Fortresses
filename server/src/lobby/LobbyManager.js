@@ -47,7 +47,7 @@ export class LobbyManager {
     return this.playerToSocket[playerId] || null;
   }
 
-  createGame(socketId) {
+  createGame(socketId, settings = {}) {
     const playerId = this.getPlayerId(socketId);
 
     // Prevent creating a new game if already in one
@@ -59,7 +59,7 @@ export class LobbyManager {
     let code;
     do { code = generateCode(); } while (this.games[code]);
 
-    const game = new GameEngine(code);
+    const game = new GameEngine(code, settings);
     game.addPlayer(playerId);
     this.games[code] = game;
     this.playerGame[playerId] = code;

@@ -9,6 +9,7 @@ export function Game({ gameState, emit, error }) {
   const [logs, setLogs] = useState([]);
   const [warlordMode, setWarlordMode] = useState(false);
   const [eventAnimation, setEventAnimation] = useState(null);
+  const [quitConfirm, setQuitConfirm] = useState(false);
   const prevStateRef = useRef(null);
 
   // Build game log from server events + state changes
@@ -119,6 +120,7 @@ export function Game({ gameState, emit, error }) {
           player={opponent}
           isMe={false}
           label="Opponent"
+          hasCrown={gameState.crownHolder === gameState.opponentId}
           onWarlordTarget={warlordMode ? handleWarlordTarget : null}
           warlordTargets={warlordMode ? warlordTargets : null}
         />
@@ -153,6 +155,7 @@ export function Game({ gameState, emit, error }) {
           player={me}
           isMe={true}
           label="You"
+          hasCrown={gameState.crownHolder === gameState.myId}
           onBuildDistrict={handleBuildDistrict}
           canBuild={canBuild}
         />
@@ -172,11 +175,29 @@ export function Game({ gameState, emit, error }) {
         </div>
         <button
           className="btn-quit"
-          onClick={() => { if (confirm('Quit the game? This cannot be undone.')) emit(EVENTS.QUIT_GAME); }}
+          onClick={() => setQuitConfirm(true)}
         >
           Quit Game
         </button>
       </div>
+
+      {quitConfirm && (
+        <div className="modal-overlay" onClick={() => setQuitConfirm(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Quit Game?</h3>
+            <p>This will end the game for both players. This cannot be undone.</p>
+            <div className="modal-actions">
+              <button className="btn-secondary" onClick={() => setQuitConfirm(false)}>Cancel</button>
+              <button
+                className="btn-quit-confirm"
+                onClick={() => { setQuitConfirm(false); emit(EVENTS.QUIT_GAME); }}
+              >
+                Quit Game
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

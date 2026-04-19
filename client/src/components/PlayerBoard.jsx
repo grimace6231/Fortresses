@@ -48,11 +48,14 @@ function DistrictCard({ district, onClick, disabled, highlight, alreadyBuilt }) 
   );
 }
 
-export function PlayerBoard({ player, isMe, label, onBuildDistrict, canBuild, onWarlordTarget, warlordTargets }) {
+export function PlayerBoard({ player, isMe, label, hasCrown, onBuildDistrict, canBuild, onWarlordTarget, warlordTargets }) {
   return (
     <div className={`player-board ${isMe ? 'my-board' : 'opponent-board'}`}>
       <div className="board-header">
-        <span className="board-label">{label}</span>
+        <span className="board-label">
+          {label}
+          {hasCrown && <span className="crown-icon" title="Holds the crown token">👑</span>}
+        </span>
         <span className="gold-counter">💰 {player.gold}</span>
         {!isMe && <span className="hand-count">🃏 {player.handCount} in hand</span>}
       </div>

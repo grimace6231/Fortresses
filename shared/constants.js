@@ -1,16 +1,74 @@
-// Role definitions
+// Role definitions. `rank` is the turn-order slot; multiple roles can share a
+// rank (e.g. Architect and Scholar both rank 7), but only one occupies that
+// slot in a given game config. `bonus` describes any passive color-bonus the
+// role collects ({ color, resource: 'gold' | 'card' }); used by the generic
+// collect-bonus action.
 export const ROLES = {
-  ASSASSIN: { id: 1, name: 'Assassin', color: null },
-  THIEF: { id: 2, name: 'Thief', color: null },
-  MAGICIAN: { id: 3, name: 'Magician', color: null },
-  KING: { id: 4, name: 'King', color: 'noble' },
-  BISHOP: { id: 5, name: 'Bishop', color: 'religious' },
-  MERCHANT: { id: 6, name: 'Merchant', color: 'trade' },
-  ARCHITECT: { id: 7, name: 'Architect', color: null },
-  WARLORD: { id: 8, name: 'Warlord', color: 'military' },
+  ASSASSIN:      { id: 1,  rank: 1, name: 'Assassin',      color: null },
+  THIEF:         { id: 2,  rank: 2, name: 'Thief',         color: null },
+  MAGICIAN:      { id: 3,  rank: 3, name: 'Magician',      color: null },
+  KING:          { id: 4,  rank: 4, name: 'King',          color: 'noble',     bonus: { color: 'noble',     resource: 'gold' } },
+  BISHOP:        { id: 5,  rank: 5, name: 'Bishop',        color: 'religious', bonus: { color: 'religious', resource: 'gold' } },
+  MERCHANT:      { id: 6,  rank: 6, name: 'Merchant',      color: 'trade',     bonus: { color: 'trade',     resource: 'gold' } },
+  ARCHITECT:     { id: 7,  rank: 7, name: 'Architect',     color: null },
+  WARLORD:       { id: 8,  rank: 8, name: 'Warlord',       color: 'military',  bonus: { color: 'military',  resource: 'gold' } },
+  QUEEN:         { id: 9,  rank: 9, name: 'Queen',         color: null },
+  SCHOLAR:       { id: 10, rank: 7, name: 'Scholar',       color: null },
+  PATRICIAN:     { id: 11, rank: 4, name: 'Patrician',     color: 'noble',     bonus: { color: 'noble',     resource: 'card' } },
+  CARDINAL:      { id: 12, rank: 5, name: 'Cardinal',      color: 'religious', bonus: { color: 'religious', resource: 'card' } },
+  TRADER:        { id: 13, rank: 6, name: 'Trader',        color: 'trade',     bonus: { color: 'trade',     resource: 'gold' } },
+  TAX_COLLECTOR: { id: 14, rank: 9, name: 'Tax Collector', color: null },
 };
 
-export const ROLE_LIST = Object.values(ROLES).sort((a, b) => a.id - b.id);
+export const ROLE_LIST = Object.values(ROLES).sort((a, b) => a.rank - b.rank);
+
+// Role configs. Each config defines a `baseRoleIds` (ranks 1–8) and, if the
+// scenario has a rank-9 character, a `rank9` descriptor so the UI can render
+// a toggle. Per the 2016 rulebook, rank-9 characters are optional with 4–7
+// players and this project adapts that to our 2-player setting.
+export const ROLE_CONFIGS = {
+  classic: {
+    label: 'Classic',
+    description: 'The original 8 roles.',
+    baseRoleIds: [1, 2, 3, 4, 5, 6, 7, 8],
+  },
+  brave: {
+    label: 'Brave',
+    description: 'Classic roles; optionally adds the Queen at rank 9.',
+    baseRoleIds: [1, 2, 3, 4, 5, 6, 7, 8],
+    rank9: {
+      id: 9,
+      label: 'Include Queen (rank 9)',
+      description: 'Earns +3 gold on her turn when the other player holds the crown token.',
+      defaultInclude: true,
+    },
+  },
+  scholarly: {
+    label: 'Scholarly',
+    description: 'Scholar replaces the Architect at rank 7. Draws 7 cards and keeps 1 (no gold, no extra builds).',
+    baseRoleIds: [1, 2, 3, 4, 5, 6, 10, 8],
+  },
+  vicious_nobles: {
+    label: 'Vicious Nobles',
+    description: 'Assassin, Thief, Magician, Patrician, Cardinal, Trader, Architect, Warlord. No-holds-barred aggression.',
+    baseRoleIds: [1, 2, 3, 11, 12, 13, 7, 8],
+    rank9: {
+      id: 14,
+      label: 'Include Tax Collector (rank 9)',
+      description: 'Every non-TC build donates 1 gold to the tax chest; the Tax Collector collects it on their turn.',
+      defaultInclude: false,
+    },
+  },
+};
+
+// Resolve a config + toggle into the final list of role IDs.
+export function resolveRoleIds(configKey, includeRank9) {
+  const cfg = ROLE_CONFIGS[configKey];
+  if (!cfg) return null;
+  const ids = [...cfg.baseRoleIds];
+  if (cfg.rank9 && includeRank9) ids.push(cfg.rank9.id);
+  return ids;
+}
 
 // District color categories
 export const DISTRICT_COLORS = {
@@ -98,6 +156,8 @@ export const EVENTS = {
   DRAW_CARDS: 'draw-cards',
   KEEP_CARD: 'keep-card',
   BUILD_DISTRICT: 'build-district',
+  BUILD_WITH_CARDS: 'build-with-cards',
+  COLLECT_TAX: 'collect-tax',
   USE_ABILITY: 'use-ability',
   END_TURN: 'end-turn',
   USE_LABORATORY: 'use-laboratory',

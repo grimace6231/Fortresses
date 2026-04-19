@@ -41,8 +41,9 @@ export function registerHandlers(io, socket, lobby) {
   const pid = () => lobby.getPlayerId(socket.id);
 
   // Create a new game
-  socket.on(EVENTS.CREATE_GAME, () => {
-    const result = lobby.createGame(socket.id);
+  socket.on(EVENTS.CREATE_GAME, (data) => {
+    const settings = (data && typeof data === 'object') ? data : {};
+    const result = lobby.createGame(socket.id, settings);
     if (result.error) {
       socket.emit(EVENTS.GAME_ERROR, { message: result.error });
       return;
@@ -138,6 +139,20 @@ export function registerHandlers(io, socket, lobby) {
     if (!game) return;
 
     const result = game.buildDistrict(pid(), cardId);
+    if (result.error) {
+      socket.emit(EVENTS.GAME_ERROR, { message: result.error });
+      return;
+    }
+
+    broadcastState(io, lobby, lobby.getCode(socket.id));
+  });
+
+  // Turn: Cardinal builds using cards as partial payment
+  socket.on(EVENTS.BUILD_WITH_CARDS, (params) => {
+    const game = lobby.getGame(socket.id);
+    if (!game) return;
+
+    const result = game.buildWithCards(pid(), params || {});
     if (result.error) {
       socket.emit(EVENTS.GAME_ERROR, { message: result.error });
       return;

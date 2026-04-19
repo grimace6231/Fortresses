@@ -10,10 +10,11 @@ export const roleAbilities = {
   1: {
     name: 'Assassin',
     needsTarget: 'role',
-    validTargets: (game, playerId) => [2, 3, 4, 5, 6, 7, 8],
+    validTargets: (game, playerId) => game.roleIds.filter(id => id !== 1),
     execute: (game, playerId, params) => {
       const targetRoleId = params?.targetRoleId;
-      if (typeof targetRoleId !== 'number' || targetRoleId < 2 || targetRoleId > 8) {
+      const valid = game.roleIds.filter(id => id !== 1);
+      if (typeof targetRoleId !== 'number' || !valid.includes(targetRoleId)) {
         return { error: 'Invalid target role' };
       }
       game.assassinatedRole = targetRoleId;
@@ -26,11 +27,11 @@ export const roleAbilities = {
     name: 'Thief',
     needsTarget: 'role',
     validTargets: (game, playerId) => {
-      return [3, 4, 5, 6, 7, 8].filter(id => id !== game.assassinatedRole);
+      return game.roleIds.filter(id => id !== 1 && id !== 2 && id !== game.assassinatedRole);
     },
     execute: (game, playerId, params) => {
       const targetRoleId = params?.targetRoleId;
-      const valid = [3, 4, 5, 6, 7, 8].filter(id => id !== game.assassinatedRole);
+      const valid = game.roleIds.filter(id => id !== 1 && id !== 2 && id !== game.assassinatedRole);
       if (typeof targetRoleId !== 'number' || !valid.includes(targetRoleId)) {
         return { error: 'Invalid target role' };
       }
@@ -211,6 +212,62 @@ export const roleAbilities = {
       }
 
       return { type: 'warlord', destroyed: false };
+    },
+  },
+
+  // 10 - Scholar: auto-executed at turn start (draw 7, keep 1). The card pick
+  // flows through the normal drawnCards/keepCard flow. See GameEngine
+  // _advanceToNextRole for the actual wiring.
+  10: {
+    name: 'Scholar',
+    needsTarget: null,
+  },
+
+  // 11 - Patrician: takes crown, +1 card per noble district, build limit 2.
+  // Crown/builds wired in GameEngine._advanceToNextRole; card bonus via the
+  // generic collectBonus action.
+  11: {
+    name: 'Patrician',
+    needsTarget: null,
+  },
+
+  // 12 - Cardinal: +1 card per religious district, may pay for a build by
+  // trading cards to the opponent in lieu of gold (handled via the
+  // BUILD_WITH_CARDS action in GameEngine).
+  12: {
+    name: 'Cardinal',
+    needsTarget: null,
+  },
+
+  // 13 - Trader: +1 gold per trade district. Trade builds do not consume the
+  // single build slot (handled in GameEngine.buildDistrict).
+  13: {
+    name: 'Trader',
+    needsTarget: null,
+  },
+
+  // 14 - Tax Collector: every non-TC build places 1 gold from builder on TC's
+  // token (persisting across rounds). TC auto-collects on their turn. Wired
+  // in GameEngine.buildDistrict and _advanceToNextRole.
+  14: {
+    name: 'Tax Collector',
+    needsTarget: null,
+  },
+
+  // 9 - Queen: +3 gold at start of turn if you are adjacent to the crown token
+  // holder. In 2-player you are always adjacent, so: +3 whenever the OTHER
+  // player holds the crown. The crown token lives on whoever last played King
+  // (or the starting crown holder), independent of whether the King character
+  // was drafted this round.
+  9: {
+    name: 'Queen',
+    needsTarget: null,
+    execute: (game, playerId) => {
+      if (game.crownHolder && game.crownHolder !== playerId) {
+        game.players[playerId].gold += 3;
+        return { type: 'queen', bonus: 3 };
+      }
+      return { type: 'queen', bonus: 0 };
     },
   },
 };

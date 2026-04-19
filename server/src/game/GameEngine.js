@@ -1,6 +1,9 @@
 import {
   PHASES,
+  ROLES,
   ROLE_LIST,
+  ROLE_CONFIGS,
+  resolveRoleIds,
   STARTING_GOLD,
   STARTING_CARDS,
   DISTRICTS_TO_WIN,
@@ -12,13 +15,26 @@ import { createDeck, shuffle } from './districts.js';
 import { roleAbilities } from './roles.js';
 
 export class GameEngine {
-  constructor(gameId) {
+  constructor(gameId, settings = {}) {
     this.gameId = gameId;
     this.phase = PHASES.WAITING;
     this.players = {}; // { playerId: { gold, hand, city, roles, connected } }
     this.deck = [];
     this.crownHolder = null; // player who has the crown
     this.round = 0;
+
+    // Which roles are in play this game. The client sends configKey + an
+    // includeRank9 toggle (for scenarios that offer a rank-9 character).
+    const configKey = settings.configKey && ROLE_CONFIGS[settings.configKey]
+      ? settings.configKey
+      : 'classic';
+    const cfg = ROLE_CONFIGS[configKey];
+    const includeRank9 = cfg.rank9
+      ? (settings.includeRank9 ?? cfg.rank9.defaultInclude)
+      : false;
+    this.settings = { configKey, includeRank9 };
+    this.roleIds = resolveRoleIds(configKey, includeRank9);
+    this.activeRoles = ROLE_LIST.filter(r => this.roleIds.includes(r.id));
 
     // Draft state
     this.draftState = null;
@@ -29,6 +45,10 @@ export class GameEngine {
     this.turnIndex = 0;
     this.assassinatedRole = null;
     this.stolenRole = null;
+
+    // Tax Collector stash (persists across rounds even when TC not in play).
+    // Only meaningful when role 14 is in this.roleIds.
+    this.taxGold = 0;
 
     // End game
     this.firstToComplete = null;
@@ -97,7 +117,7 @@ export class GameEngine {
       p.roles = [];
     }
 
-    const allRoles = [...ROLE_LIST];
+    const allRoles = [...this.activeRoles];
     const shuffled = shuffle(allRoles);
 
     // 2-player draft:
@@ -138,13 +158,19 @@ export class GameEngine {
     if (ds.action === 'pick') {
       this.players[playerId].roles.push(role);
 
-      if (ds.firstTurn) {
+      const everyoneHasTwo = Object.values(this.players).every(p => p.roles.length >= 2);
+
+      if (everyoneHasTwo) {
+        // Draft done — auto-discard remaining roles face up
+        ds.discarded.push(...ds.available);
+        ds.available = [];
+        this.startTurnPhase();
+      } else if (ds.firstTurn) {
         // First turn: pick only, no discard — switch to other player
         ds.firstTurn = false;
         ds.currentPicker = Object.keys(this.players).find(p => p !== playerId);
-        // Other player will pick + discard
       } else if (ds.available.length === 1) {
-        // Last role is discarded, draft done
+        // Only one role left — auto-discard and end draft
         ds.discarded.push(ds.available[0]);
         ds.available = [];
         this.startTurnPhase();
@@ -172,6 +198,9 @@ export class GameEngine {
 
     return {
       available: ds.currentPicker === forPlayerId ? ds.available : ds.available.map(() => null),
+      availableIds: ds.available.map(r => r.id), // public: which role ids are still in the pool
+      discarded: ds.discarded, // public: face-up discards
+      allRoleIds: this.roleIds, // all roles in play this game
       currentPicker: ds.currentPicker,
       action: ds.action,
       step: ds.step,
@@ -185,8 +214,11 @@ export class GameEngine {
     this.phase = PHASES.TURNS;
     this.draftState = null;
 
-    // Build turn order: all 8 roles in order, only those that are held play
-    this.turnOrder = ROLE_LIST.map(r => r.id);
+    // Build turn order by rank. Multiple roles can share a rank but configs
+    // only ever include one role per rank, so ordering is unambiguous.
+    this.turnOrder = [...this.activeRoles]
+      .sort((a, b) => a.rank - b.rank)
+      .map(r => r.id);
     this.turnIndex = 0;
 
     this._advanceToNextRole();
@@ -203,8 +235,8 @@ export class GameEngine {
         continue;
       }
 
-      // King always takes the crown, even if assassinated
-      if (roleId === 4) {
+      // King/Patrician always take the crown, even if assassinated
+      if (roleId === 4 || roleId === 11) {
         this.crownHolder = holder;
       }
 
@@ -212,8 +244,8 @@ export class GameEngine {
       if (roleId === this.assassinatedRole) {
         const roleName = ROLE_LIST.find(r => r.id === roleId).name;
         this._log(`The ${roleName} was assassinated and loses their turn!`);
-        if (roleId === 4) {
-          this._log(`The King still takes the crown.`);
+        if (roleId === 4 || roleId === 11) {
+          this._log(`The ${roleName} still takes the crown.`);
         }
         this.turnIndex++;
         continue;
@@ -243,17 +275,36 @@ export class GameEngine {
         drawnCards: null, // set when drawing cards
       };
 
-      // King/Bishop/Merchant/Warlord: passive effects only, color bonus is manual
+      // Crown / role-specific openers
       if (roleId === 4) {
-        // Crown already assigned before assassination check
         this._log(`The King takes the crown.`);
+      }
+      if (roleId === 11) {
+        this._log(`The Patrician takes the crown.`);
+        this.currentTurn.buildsRemaining = 2;
+        this.currentTurn.maxBuilds = 2;
       }
       if (roleId === 6) {
         this.players[holder].gold += 1;
         this._log(`The Merchant receives 1 extra gold.`);
       }
-      if ([4, 5, 6, 8].includes(roleId)) {
+
+      // Generic color-bonus arming: any role with a bonus config can collect it
+      const roleDef = ROLE_LIST.find(r => r.id === roleId);
+      if (roleDef?.bonus) {
         this.currentTurn.hasCollectedBonus = false;
+      }
+
+      // Tax Collector: auto-collect accumulated tax at turn start
+      if (roleId === 14) {
+        if (this.taxGold > 0) {
+          this.players[holder].gold += this.taxGold;
+          this._log(`The Tax Collector collects ${this.taxGold} gold from the tax chest.`);
+          this.taxGold = 0;
+        } else {
+          this._log(`The Tax Collector finds the tax chest empty.`);
+        }
+        this.currentTurn.hasUsedAbility = true;
       }
 
       // Architect: auto-execute (draw cards + set max builds)
@@ -262,6 +313,28 @@ export class GameEngine {
         ability.execute(this, holder);
         this.currentTurn.hasUsedAbility = true;
         this._log(`The Architect draws 2 extra cards and may build up to 3 districts.`);
+      }
+
+      // Scholar: auto-execute (draw 7, keep 1 via existing keepCard flow).
+      // This replaces the normal income/draw action for the turn.
+      if (roleId === 10) {
+        const drawn = this.deck.splice(0, 7);
+        this.currentTurn.drawnCards = drawn;
+        this.currentTurn.hasTakenIncome = true;
+        this.currentTurn.hasUsedAbility = true;
+        this._log(`The Scholar draws ${drawn.length} cards and keeps 1.`);
+      }
+
+      // Queen: auto-execute (+3 gold if the other player holds the crown)
+      if (roleId === 9) {
+        const ability = roleAbilities[roleId];
+        const result = ability.execute(this, holder);
+        this.currentTurn.hasUsedAbility = true;
+        if (result.bonus > 0) {
+          this._log(`The Queen sits beside the Crown and collects ${result.bonus} gold.`);
+        } else {
+          this._log(`The Queen holds the Crown herself and collects no bonus.`);
+        }
       }
 
       return;
@@ -366,39 +439,45 @@ export class GameEngine {
     return { success: true };
   }
 
-  // Collect color bonus (King/Bishop/Merchant/Warlord) — usable at any point during turn
+  // Collect color bonus (any role with a `bonus` config). Resource may be
+  // 'gold' or 'card'.
   collectBonus(playerId) {
     if (!this._validateTurn(playerId)) return { error: 'Not your turn' };
     if (this.currentTurn.hasCollectedBonus === undefined) return { error: 'No color bonus for this role' };
     if (this.currentTurn.hasCollectedBonus) return { error: 'Already collected bonus' };
 
-    const roleId = this.currentTurn.roleId;
-    const colorMap = { 4: 'noble', 5: 'religious', 6: 'trade', 8: 'military' };
-    const color = colorMap[roleId];
-    if (!color) return { error: 'No color bonus for this role' };
+    const roleDef = ROLE_LIST.find(r => r.id === this.currentTurn.roleId);
+    if (!roleDef?.bonus) return { error: 'No color bonus for this role' };
+    const { color, resource } = roleDef.bonus;
 
     const player = this.players[playerId];
     let bonus = player.city.filter(d => d.color === color).length;
     if (player.city.some(d => d.name === 'School of Magic')) bonus += 1;
 
-    player.gold += bonus;
+    if (resource === 'card') {
+      const drawn = this.deck.splice(0, bonus);
+      player.hand.push(...drawn);
+      bonus = drawn.length;
+    } else {
+      player.gold += bonus;
+    }
     this.currentTurn.hasCollectedBonus = true;
 
     const colorLabel = color.charAt(0).toUpperCase() + color.slice(1);
+    const unit = resource === 'card' ? (bonus === 1 ? 'card' : 'cards') : 'gold';
     if (bonus > 0) {
-      this._log(`The ${this.currentTurn.roleName} collects ${bonus} bonus gold from ${colorLabel} districts.`);
+      this._log(`The ${this.currentTurn.roleName} collects ${bonus} bonus ${unit} from ${colorLabel} districts.`);
     } else {
       this._log(`The ${this.currentTurn.roleName} has no ${colorLabel} districts to collect from.`);
     }
 
-    return { success: true, bonus };
+    return { success: true, bonus, resource };
   }
 
   buildDistrict(playerId, cardId) {
     if (!this._validateTurn(playerId)) return { error: 'Not your turn' };
     if (!this.currentTurn.hasTakenIncome) return { error: 'Must take income first' };
     if (this.currentTurn.drawnCards) return { error: 'Must choose a card first' };
-    if (this.currentTurn.buildsRemaining <= 0) return { error: 'No builds remaining' };
 
     const player = this.players[playerId];
 
@@ -406,6 +485,14 @@ export class GameEngine {
     if (cardIndex === -1) return { error: 'Card not in hand' };
 
     const card = player.hand[cardIndex];
+    const isTrader = this.currentTurn.roleId === 13;
+    const tradeFreebie = isTrader && card.color === 'trade';
+
+    // Trade builds for the Trader bypass the single-build slot. Non-trade
+    // builds still consume it.
+    if (!tradeFreebie && this.currentTurn.buildsRemaining <= 0) {
+      return { error: 'No builds remaining' };
+    }
 
     // Check if already built same district
     if (player.city.some(d => d.name === card.name)) {
@@ -417,9 +504,11 @@ export class GameEngine {
     player.gold -= card.cost;
     player.hand.splice(cardIndex, 1);
     player.city.push(card);
-    this.currentTurn.buildsRemaining--;
+    if (!tradeFreebie) this.currentTurn.buildsRemaining--;
 
     this._log(`The ${this.currentTurn.roleName} builds ${card.name} for ${card.cost} gold.`);
+
+    this._applyTaxOnBuild(playerId);
 
     // Check for game end trigger
     if (player.city.length >= DISTRICTS_TO_WIN && !this.firstToComplete) {
@@ -429,6 +518,84 @@ export class GameEngine {
     }
 
     return { success: true, district: card };
+  }
+
+  // Cardinal: pay for a build by trading cards 1:1 with the opponent instead
+  // of (or in addition to) gold. Each card given to the opponent counts as 1
+  // gold toward the build cost. Gold = gold paid from stash; cardIds = cards
+  // handed to the opponent (which they keep).
+  buildWithCards(playerId, { cardId, cardIds = [], goldPaid = 0 } = {}) {
+    if (!this._validateTurn(playerId)) return { error: 'Not your turn' };
+    if (this.currentTurn.roleId !== 12) return { error: 'Only the Cardinal can build with cards' };
+    if (!this.currentTurn.hasTakenIncome) return { error: 'Must take income first' };
+    if (this.currentTurn.drawnCards) return { error: 'Must choose a card first' };
+    if (this.currentTurn.buildsRemaining <= 0) return { error: 'No builds remaining' };
+
+    const player = this.players[playerId];
+    const opponentId = Object.keys(this.players).find(p => p !== playerId);
+    const opponent = this.players[opponentId];
+
+    const cardIndex = player.hand.findIndex(c => c.id === cardId);
+    if (cardIndex === -1) return { error: 'Card not in hand' };
+    const card = player.hand[cardIndex];
+
+    if (player.city.some(d => d.name === card.name)) {
+      return { error: 'Already built this district' };
+    }
+    if (!Array.isArray(cardIds) || cardIds.includes(cardId)) {
+      return { error: 'Invalid payment cards' };
+    }
+    if (goldPaid < 0 || goldPaid > player.gold) return { error: 'Invalid gold amount' };
+    if (goldPaid + cardIds.length !== card.cost) {
+      return { error: 'Payment must equal district cost' };
+    }
+    if (cardIds.length > opponent.gold) {
+      return { error: 'Opponent does not have enough gold to trade' };
+    }
+
+    // Collect the payment cards from hand
+    const handIds = new Set(player.hand.map(c => c.id));
+    for (const id of cardIds) {
+      if (!handIds.has(id) || id === cardId) return { error: 'Payment card not in hand' };
+    }
+    const payIdSet = new Set(cardIds);
+    const payCards = player.hand.filter(c => payIdSet.has(c.id));
+
+    // Transfer: gold from opponent to cardinal-as-shortfall goes straight to
+    // the build; cards move cardinal -> opponent.
+    player.hand = player.hand.filter(c => !payIdSet.has(c.id) && c.id !== cardId);
+    opponent.hand.push(...payCards);
+    opponent.gold -= cardIds.length;
+    player.gold -= goldPaid;
+    player.city.push(card);
+    this.currentTurn.buildsRemaining--;
+
+    this._log(
+      `The Cardinal builds ${card.name} (${goldPaid} gold + ${cardIds.length} card${cardIds.length === 1 ? '' : 's'} traded to opponent).`
+    );
+
+    this._applyTaxOnBuild(playerId);
+
+    if (player.city.length >= DISTRICTS_TO_WIN && !this.firstToComplete) {
+      this.firstToComplete = playerId;
+      this.finalRound = true;
+      this._log(`A city has been completed with ${card.name}! Final round!`);
+    }
+
+    return { success: true, district: card };
+  }
+
+  // Tax Collector side-effect: whenever any player other than the TC builds
+  // a district, 1 gold moves from the builder's stash to the tax chest (if
+  // they have any gold to give).
+  _applyTaxOnBuild(builderId) {
+    if (!this.roleIds?.includes(14)) return;
+    if (this.currentTurn.roleId === 14) return; // TC is not taxed
+    const builder = this.players[builderId];
+    if (builder.gold <= 0) return;
+    builder.gold -= 1;
+    this.taxGold += 1;
+    this._log(`Tax Collector claims 1 gold from ${this.currentTurn.roleName}'s build.`);
   }
 
   useAbility(playerId, params) {
@@ -572,6 +739,9 @@ export class GameEngine {
 
       deckCount: this.deck.length,
 
+      // Tax Collector chest (null when TC not in this config)
+      taxGold: this.roleIds.includes(14) ? this.taxGold : null,
+
       // New log events since last state push
       newEvents: this._getNewEvents(playerId),
     };
@@ -583,7 +753,7 @@ export class GameEngine {
 
     // Turn state
     if (this.phase === PHASES.TURNS && this.currentTurn) {
-      const colorMap = { 4: 'noble', 5: 'religious', 6: 'trade', 8: 'military' };
+      const turnRoleDef = ROLE_LIST.find(r => r.id === this.currentTurn.roleId);
       state.turn = {
         playerId: this.currentTurn.playerId,
         roleId: this.currentTurn.roleId,
@@ -594,7 +764,10 @@ export class GameEngine {
         buildsRemaining: this.currentTurn.buildsRemaining,
         drawnCards: this.currentTurn.playerId === playerId ? this.currentTurn.drawnCards : null,
         hasCollectedBonus: this.currentTurn.hasCollectedBonus,
-        bonusColor: colorMap[this.currentTurn.roleId] || null,
+        bonusColor: turnRoleDef?.bonus?.color || null,
+        bonusResource: turnRoleDef?.bonus?.resource || null,
+        tradeFreeBuilds: this.currentTurn.roleId === 13,
+        canBuildWithCards: this.currentTurn.roleId === 12,
       };
 
       // Building abilities available this turn

@@ -13,10 +13,11 @@ const ROLE_DESCRIPTIONS = {
 };
 
 export function ActionPanel({ gameState, emit, onWarlordTarget, setWarlordMode }) {
-  const { turn, me } = gameState;
+  const { turn, me, opponent, taxGold } = gameState;
   const [magicianMode, setMagicianMode] = useState(null);
   const [selectedCards, setSelectedCards] = useState([]);
   const [labMode, setLabMode] = useState(false);
+  const [cardinalBuild, setCardinalBuild] = useState(null); // { cardId, payCardIds: [] }
 
   if (!turn) return null;
 
@@ -197,8 +198,106 @@ export function ActionPanel({ gameState, emit, onWarlordTarget, setWarlordMode }
             className="btn-ability"
             onClick={() => emit(EVENTS.COLLECT_BONUS)}
           >
-            +1 gold per {turn.bonusColor} district
+            +1 {turn.bonusResource === 'card' ? 'card' : 'gold'} per {turn.bonusColor} district
           </button>
+        </div>
+      )}
+
+      {/* Trader: free trade-district builds */}
+      {turn.tradeFreeBuilds && (
+        <div className="build-hint">
+          Trade districts don't consume your build slot — build any number of them.
+        </div>
+      )}
+
+      {/* Cardinal: build-with-cards flow */}
+      {turn.canBuildWithCards && !cardinalBuild && turn.hasTakenIncome && turn.buildsRemaining > 0 && (
+        <div className="ability-section">
+          <strong>Cardinal trade-build:</strong>
+          <p className="muted" style={{ fontSize: '0.82rem' }}>
+            Pick a district you can't afford, then trade cards to the opponent at 1 card = 1 gold.
+          </p>
+          <div className="drawn-cards">
+            {me.hand
+              .filter(card => card.cost > me.gold && !me.city.some(d => d.name === card.name))
+              .map(card => {
+                const shortfall = card.cost - me.gold;
+                const canPay = me.hand.length - 1 >= shortfall && opponent.gold >= shortfall;
+                return (
+                  <button
+                    key={card.id}
+                    className="district-card-btn"
+                    disabled={!canPay}
+                    onClick={() => setCardinalBuild({ cardId: card.id, payCardIds: [] })}
+                  >
+                    <strong>{card.name}</strong>
+                    <span> — cost {card.cost}, short {shortfall}</span>
+                    {!canPay && <span className="drawn-card-desc">Not enough cards/opponent gold</span>}
+                  </button>
+                );
+              })}
+            {me.hand.filter(card => card.cost > me.gold && !me.city.some(d => d.name === card.name)).length === 0 && (
+              <span className="muted">No unaffordable districts in hand.</span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {turn.canBuildWithCards && cardinalBuild && (() => {
+        const targetCard = me.hand.find(c => c.id === cardinalBuild.cardId);
+        if (!targetCard) return null;
+        const shortfall = Math.max(0, targetCard.cost - me.gold);
+        const picked = cardinalBuild.payCardIds;
+        const done = picked.length === shortfall;
+        return (
+          <div className="ability-section">
+            <strong>Trade-build: {targetCard.name}</strong>
+            <p className="muted" style={{ fontSize: '0.82rem' }}>
+              Give the opponent {shortfall} card(s); they give you {shortfall} gold toward this build. Selected {picked.length}/{shortfall}.
+            </p>
+            <div className="hand-select">
+              {me.hand.filter(c => c.id !== cardinalBuild.cardId).map(card => (
+                <label key={card.id} className="card-check">
+                  <input
+                    type="checkbox"
+                    checked={picked.includes(card.id)}
+                    disabled={!picked.includes(card.id) && picked.length >= shortfall}
+                    onChange={(e) => {
+                      const next = e.target.checked
+                        ? [...picked, card.id]
+                        : picked.filter(id => id !== card.id);
+                      setCardinalBuild({ ...cardinalBuild, payCardIds: next });
+                    }}
+                  />
+                  {card.name} ({card.cost})
+                </label>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                className="btn-ability"
+                disabled={!done}
+                onClick={() => {
+                  emit(EVENTS.BUILD_WITH_CARDS, {
+                    cardId: cardinalBuild.cardId,
+                    cardIds: cardinalBuild.payCardIds,
+                    goldPaid: me.gold,
+                  });
+                  setCardinalBuild(null);
+                }}
+              >
+                Build for {me.gold} gold + {picked.length} card(s)
+              </button>
+              <button className="btn-secondary" onClick={() => setCardinalBuild(null)}>Cancel</button>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Tax Collector chest readout */}
+      {taxGold != null && taxGold > 0 && turn.roleId !== 14 && (
+        <div className="build-hint">
+          Tax chest holds {taxGold} gold. Each build donates 1 gold until the Tax Collector collects.
         </div>
       )}
 

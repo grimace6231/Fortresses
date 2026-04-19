@@ -2,3 +2,11 @@ node_modules
 dist
 .env
 .env.local
+
+# Local Claude Code config
+.claude/
+
+# Rulebook reference (copyrighted — keep local only)
+zc01-rulebook_web.pdf
+rulebook.txt
+rulebook_p9.png
