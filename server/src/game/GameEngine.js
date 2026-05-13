@@ -196,11 +196,12 @@ export class GameEngine {
     const ds = this.draftState;
     if (!ds) return null;
 
+    // Roles outside the available pool (discarded face-up, face-down, or held by
+    // the opponent) are deliberately not distinguished — each player should only
+    // learn that a role is unavailable, not why.
     return {
-      available: ds.currentPicker === forPlayerId ? ds.available : ds.available.map(() => null),
-      availableIds: ds.available.map(r => r.id), // public: which role ids are still in the pool
-      discarded: ds.discarded, // public: face-up discards
-      allRoleIds: this.roleIds, // all roles in play this game
+      availableIds: ds.available.map(r => r.id),
+      allRoleIds: this.roleIds,
       currentPicker: ds.currentPicker,
       action: ds.action,
       step: ds.step,

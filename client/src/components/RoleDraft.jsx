@@ -28,12 +28,12 @@ export function RoleDraft({ gameState, emit }) {
   const allRoleIds = draft.allRoleIds || ROLE_LIST.map(r => r.id);
   const availableIds = new Set(draft.availableIds || []);
   const myRoleIds = new Set(me.roles.map(r => r.id));
-  const discardedIds = new Set((draft.discarded || []).map(r => r.id));
 
   const rankOf = (id) => ROLE_LIST.find(r => r.id === id)?.rank ?? id;
 
   // Roles shown in the main pool — everything except the player's own picks.
-  // Greyed out if not available for picking (i.e. opponent-picked or discarded).
+  // Unavailable roles are greyed out without indicating *why* (taken vs
+  // discarded face-up vs face-down) to preserve hidden-information rules.
   const poolRoleIds = allRoleIds
     .filter(id => !myRoleIds.has(id))
     .sort((a, b) => rankOf(a) - rankOf(b));
@@ -66,12 +66,10 @@ export function RoleDraft({ gameState, emit }) {
             const role = getRole(id);
             if (!role) return null;
             const isAvailable = availableIds.has(id);
-            const isDiscarded = discardedIds.has(id);
             const selectable = isMyTurn && isAvailable;
             const classes = ['role-card'];
             if (selectable) classes.push('selectable');
             else classes.push('unavailable');
-            if (isDiscarded) classes.push('discarded');
             if (isDiscarding && selectable) classes.push('discard-mode');
 
             return (
@@ -84,8 +82,6 @@ export function RoleDraft({ gameState, emit }) {
                 <span className="role-num">{role.rank ?? role.id}</span>
                 <span className="role-name">{role.name}</span>
                 <span className="role-desc">{ROLE_DESCRIPTIONS[role.id]}</span>
-                {isDiscarded && <span className="role-tag">Discarded</span>}
-                {!isAvailable && !isDiscarded && <span className="role-tag">Taken</span>}
               </button>
             );
           })}

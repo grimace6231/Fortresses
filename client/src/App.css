@@ -400,16 +400,6 @@ button.district-card:hover:not(:disabled) {
   position: relative;
 }
 .role-card.unavailable:hover:not(:disabled) { transform: none; }
-.role-tag {
-  margin-top: 6px;
-  font-size: 0.65rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: #888;
-  border-top: 1px dashed #444;
-  padding-top: 4px;
-}
-.role-card.discarded .role-tag { color: #cc6666; }
 
 .discard-prompt { color: #ff9090 !important; }
 
