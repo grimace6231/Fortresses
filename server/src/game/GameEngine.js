@@ -272,7 +272,6 @@ export class GameEngine {
         hasUsedAbility: false,
         hasTakenIncome: false,
         buildsRemaining: 1,
-        maxBuilds: 1,
         drawnCards: null, // set when drawing cards
       };
 
@@ -283,7 +282,6 @@ export class GameEngine {
       if (roleId === 11) {
         this._log(`The Patrician takes the crown.`);
         this.currentTurn.buildsRemaining = 2;
-        this.currentTurn.maxBuilds = 2;
       }
       if (roleId === 6) {
         this.players[holder].gold += 1;
